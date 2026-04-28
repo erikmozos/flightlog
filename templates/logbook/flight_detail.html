@@ -1,0 +1,113 @@
+{% extends "base.html" %}
+
+{% block title %}Vuelo {{ flight.planned_date }} — Flightlog{% endblock %}
+
+{% block content %}
+<h1>Vuelo ({{ flight.get_status_display }})</h1>
+<p><strong>Fecha planificada:</strong> {{ flight.planned_date }}</p>
+
+<h2>Itinerario</h2>
+<dl>
+    <dt>Aeronave</dt>
+    <dd>{{ flight.aircraft }}</dd>
+    <dt>Salida</dt>
+    <dd>{{ flight.departure_airport.icao_code }} — {{ flight.departure_airport.name }} ({{ flight.departure_airport.city }}, {{ flight.departure_airport.country }})</dd>
+    <dt>Llegada</dt>
+    <dd>{{ flight.arrival_airport.icao_code }} — {{ flight.arrival_airport.name }} ({{ flight.arrival_airport.city }}, {{ flight.arrival_airport.country }})</dd>
+    <dt>Salida prevista (hora)</dt>
+    <dd>{% if flight.planned_departure_time %}{{ flight.planned_departure_time }}{% else %}—{% endif %}</dd>
+    <dt>Encendido motores</dt>
+    <dd>{% if flight.engine_start_time %}{{ flight.engine_start_time }}{% else %}—{% endif %}</dd>
+    <dt>Apagado motores</dt>
+    <dd>{% if flight.engine_stop_time %}{{ flight.engine_stop_time }}{% else %}—{% endif %}</dd>
+    <dt>Duración (motor)</dt>
+    <dd>
+        {% if flight.is_completed and flight.total_time %}
+            {{ flight.total_time }}
+        {% elif flight.is_planned or flight.is_in_progress %}
+            (se calcula al finalizar)
+        {% else %}
+            —
+        {% endif %}
+    </dd>
+    <dt>Notas</dt>
+    <dd>{% if flight.remarks %}{{ flight.remarks|linebreaks }}{% else %}—{% endif %}</dd>
+</dl>
+
+<h2>Acciones</h2>
+{% if flight.is_planned %}
+    <form method="post" action="{% url 'logbook:flight_start' flight.pk %}" style="display:inline;">
+        {% csrf_token %}
+        <button type="submit">Iniciar vuelo</button>
+    </form>
+    <p><small>Registra el encendido de motores a la hora actual.</small></p>
+{% elif flight.is_in_progress %}
+    <form method="post" action="{% url 'logbook:flight_finish' flight.pk %}" style="display:inline;">
+        {% csrf_token %}
+        <button type="submit">Finalizar vuelo</button>
+    </form>
+    <p><small>Registra el apagado de motores, calcula la duración y marca el vuelo como completado.</small></p>
+{% elif flight.is_completed %}
+    <p>Vuelo completado.</p>
+{% elif flight.status == "CANCELLED" %}
+    <p>Vuelo cancelado.</p>
+{% endif %}
+
+<h2>Cartas — salida: {{ flight.departure_airport.icao_code }}</h2>
+{% if departure_charts_by_type %}
+    {% for type_label, charts in departure_charts_by_type.items %}
+        <h3>{{ type_label }}</h3>
+        <ul>
+            {% for c in charts %}
+                <li>
+                    <strong>{{ c.title }}</strong>
+                    {% if c.description %}<br><small>{{ c.description|truncatewords:30 }}</small>{% endif %}
+                    <br>
+                    {% if c.pdf_file %}
+                        <a href="{{ c.pdf_file.url }}">Abrir PDF</a>
+                    {% endif %}
+                    {% if c.pdf_file and c.external_url %} · {% endif %}
+                    {% if c.external_url %}
+                        <a href="{{ c.external_url }}" rel="noopener noreferrer" target="_blank">Enlace externo</a>
+                    {% endif %}
+                    {% if not c.pdf_file and not c.external_url %}
+                        (sin enlace; completa en admin)
+                    {% endif %}
+                </li>
+            {% endfor %}
+        </ul>
+    {% endfor %}
+{% else %}
+    <p>No hay cartas activas para este aeropuerto.</p>
+{% endif %}
+
+<h2>Cartas — llegada: {{ flight.arrival_airport.icao_code }}</h2>
+{% if arrival_charts_by_type %}
+    {% for type_label, charts in arrival_charts_by_type.items %}
+        <h3>{{ type_label }}</h3>
+        <ul>
+            {% for c in charts %}
+                <li>
+                    <strong>{{ c.title }}</strong>
+                    {% if c.description %}<br><small>{{ c.description|truncatewords:30 }}</small>{% endif %}
+                    <br>
+                    {% if c.pdf_file %}
+                        <a href="{{ c.pdf_file.url }}">Abrir PDF</a>
+                    {% endif %}
+                    {% if c.pdf_file and c.external_url %} · {% endif %}
+                    {% if c.external_url %}
+                        <a href="{{ c.external_url }}" rel="noopener noreferrer" target="_blank">Enlace externo</a>
+                    {% endif %}
+                    {% if not c.pdf_file and not c.external_url %}
+                        (sin enlace; completa en admin)
+                    {% endif %}
+                </li>
+            {% endfor %}
+        </ul>
+    {% endfor %}
+{% else %}
+    <p>No hay cartas activas para este aeropuerto.</p>
+{% endif %}
+
+<p><a href="{% url 'logbook:flight_list' %}">Volver a la lista</a></p>
+{% endblock %}

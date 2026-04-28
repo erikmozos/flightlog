@@ -1,0 +1,83 @@
+{% extends "base.html" %}
+
+{% block title %}Historial de vuelos — Flightlog{% endblock %}
+
+{% block content %}
+<style>
+    .list-header { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 1rem; margin-bottom: 1rem; }
+    .list-header h1 { margin: 0; font-size: 1.35rem; }
+    .btn-primary { display: inline-block; padding: 0.45rem 0.9rem; background: #0d47a1; color: #fff; text-decoration: none; border-radius: 6px; font-weight: 600; border: none; cursor: pointer; font-size: 0.9rem; }
+    .btn-primary:hover { background: #1565c0; color: #fff; }
+    .btn-action { padding: 0.3rem 0.65rem; border-radius: 4px; font-size: 0.8rem; font-weight: 600; cursor: pointer; border: 1px solid #ccc; background: #fff; }
+    .btn-start { border-color: #1565c0; color: #1565c0; }
+    .btn-start:hover { background: #e3f2fd; }
+    .btn-finish { border-color: #2e7d32; color: #2e7d32; }
+    .btn-finish:hover { background: #e8f5e9; }
+    table.flight-table { width: 100%; border-collapse: collapse; font-size: 0.92rem; }
+    table.flight-table th, table.flight-table td { text-align: left; padding: 0.55rem 0.5rem; border-bottom: 1px solid #eee; vertical-align: middle; }
+    table.flight-table th { font-weight: 600; color: #333; }
+    .badge { display: inline-block; padding: 0.15rem 0.45rem; border-radius: 4px; font-size: 0.72rem; font-weight: 600; text-transform: uppercase; }
+    .badge-planned { background: #eceff1; color: #546e7a; }
+    .badge-progress { background: #e3f2fd; color: #1565c0; }
+    .badge-done { background: #e8f5e9; color: #2e7d32; }
+    .badge-cancel { background: #ffebee; color: #c62828; }
+    .actions-cell form { display: inline; margin: 0; }
+    .actions-cell .btn-action { margin-right: 0.25rem; }
+</style>
+
+<div class="list-header">
+    <h1>Historial de vuelos</h1>
+    <a class="btn-primary" href="{% url 'logbook:flight_create' %}">+ Nuevo vuelo</a>
+</div>
+
+{% if flights %}
+<table class="flight-table">
+    <thead>
+        <tr>
+            <th>Fecha</th>
+            <th>Aeronave</th>
+            <th>Origen</th>
+            <th>Destino</th>
+            <th>Estado</th>
+            <th>Tiempo total</th>
+            <th>Acciones</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for f in flights %}
+        <tr>
+            <td><a href="{% url 'logbook:flight_detail' f.pk %}">{{ f.planned_date|date:"d M Y" }}</a></td>
+            <td><strong>{{ f.aircraft.registration }}</strong><br><small>{{ f.aircraft.manufacturer }} {{ f.aircraft.model }}</small></td>
+            <td>{{ f.departure_airport.icao_code }} <small>({{ f.departure_airport.city }})</small></td>
+            <td>{{ f.arrival_airport.icao_code }} <small>({{ f.arrival_airport.city }})</small></td>
+            <td>
+                {% if f.status == "PLANNED" %}<span class="badge badge-planned">{{ f.get_status_display }}</span>
+                {% elif f.status == "IN_PROGRESS" %}<span class="badge badge-progress">{{ f.get_status_display }}</span>
+                {% elif f.status == "COMPLETED" %}<span class="badge badge-done">{{ f.get_status_display }}</span>
+                {% else %}<span class="badge badge-cancel">{{ f.get_status_display }}</span>
+                {% endif %}
+            </td>
+            <td>{% if f.total_time %}{{ f.total_time }}{% else %}—{% endif %}</td>
+            <td class="actions-cell">
+                {% if f.status == "PLANNED" %}
+                    <form method="post" action="{% url 'logbook:flight_start' f.pk %}">
+                        {% csrf_token %}
+                        <button type="submit" class="btn-action btn-start">Iniciar</button>
+                    </form>
+                {% elif f.status == "IN_PROGRESS" %}
+                    <form method="post" action="{% url 'logbook:flight_finish' f.pk %}">
+                        {% csrf_token %}
+                        <button type="submit" class="btn-action btn-finish">Finalizar</button>
+                    </form>
+                {% else %}
+                    <span style="color:#999;">—</span>
+                {% endif %}
+            </td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% else %}
+<p>No hay vuelos. <a href="{% url 'logbook:flight_create' %}">Crear vuelo previsto</a>.</p>
+{% endif %}
+{% endblock %}

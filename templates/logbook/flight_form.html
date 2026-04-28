@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+
+{% block title %}Nuevo vuelo previsto — Flightlog{% endblock %}
+
+{% block content %}
+<h1>Nuevo vuelo previsto</h1>
+<p>Se crea en estado <strong>Planificado</strong>. Las horas reales de motor se registran desde el detalle del vuelo.</p>
+<form method="post" action="">
+    {% csrf_token %}
+    {% if form.non_field_errors %}
+        <ul>
+            {% for err in form.non_field_errors %}<li>{{ err }}</li>{% endfor %}
+        </ul>
+    {% endif %}
+    <table>
+        {% for field in form %}
+            <tr>
+                <th>{{ field.label_tag }}</th>
+                <td>
+                    {{ field.errors }}
+                    {{ field }}
+                    {% if field.help_text %}<small><br>{{ field.help_text }}</small>{% endif %}
+                </td>
+            </tr>
+        {% endfor %}
+    </table>
+    <p><button type="submit">Crear vuelo previsto</button></p>
+</form>
+<p><a href="{% url 'logbook:flight_list' %}">Volver a la lista</a></p>
+{% endblock %}

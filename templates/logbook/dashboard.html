@@ -1,0 +1,108 @@
+{% extends "base.html" %}
+
+{% block title %}Panel de control — Flightlog{% endblock %}
+
+{% block content %}
+<style>
+    .dash-header { display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: 1rem; margin-bottom: 1.5rem; }
+    .dash-header h1 { margin: 0 0 0.25rem 0; font-size: 1.5rem; }
+    .dash-header p { margin: 0; color: #444; }
+    .btn-primary { display: inline-block; padding: 0.5rem 1rem; background: #0d47a1; color: #fff; text-decoration: none; border-radius: 6px; font-weight: 600; border: none; cursor: pointer; }
+    .btn-primary:hover { background: #1565c0; color: #fff; }
+    .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 1rem; margin-bottom: 2rem; }
+    .card { border: 1px solid #e0e0e0; border-radius: 8px; padding: 1rem; background: #fafafa; }
+    .card strong { display: block; font-size: 1.75rem; font-weight: 700; line-height: 1.2; }
+    .card .label { font-size: 0.85rem; color: #555; margin-bottom: 0.35rem; }
+    .card .hint { font-size: 0.75rem; color: #777; margin-top: 0.35rem; }
+    .card.card-active { background: #0d47a1; color: #fff; border-color: #0d47a1; }
+    .card.card-active .label, .card.card-active .hint { color: rgba(255,255,255,0.9); }
+    .card.card-active strong { color: #fff; }
+    .section-title { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 0.75rem; }
+    .section-title h2 { margin: 0; font-size: 1.15rem; }
+    table.dash-table { width: 100%; border-collapse: collapse; font-size: 0.95rem; }
+    table.dash-table th, table.dash-table td { text-align: left; padding: 0.5rem 0.6rem; border-bottom: 1px solid #eee; }
+    table.dash-table th { font-weight: 600; color: #333; }
+    .badge { display: inline-block; padding: 0.15rem 0.45rem; border-radius: 4px; font-size: 0.75rem; font-weight: 600; text-transform: uppercase; }
+    .badge-planned { background: #fff8e1; color: #f57f17; }
+    .badge-progress { background: #e3f2fd; color: #1565c0; }
+    .badge-done { background: #e8f5e9; color: #2e7d32; }
+    .badge-cancel { background: #ffebee; color: #c62828; }
+</style>
+
+<div class="dash-header">
+    <div>
+        <h1>Panel de control</h1>
+        <p>Resumen de tu actividad en el libro de vuelo.</p>
+    </div>
+    <a class="btn-primary" href="{% url 'logbook:flight_create' %}">+ Nuevo vuelo</a>
+</div>
+
+<div class="cards">
+    <div class="card">
+        <span class="label">Vuelos previstos</span>
+        <strong>{{ planned_count }}</strong>
+        <span class="hint">Próximos 7 días</span>
+    </div>
+    <div class="card{% if in_progress %} card-active{% endif %}">
+        <span class="label">Vuelo en curso</span>
+        <strong>{% if in_progress %}1{% else %}0{% endif %}</strong>
+        {% if in_progress %}
+            <span class="hint">
+                {{ in_progress.departure_airport.icao_code }} → {{ in_progress.arrival_airport.icao_code }}
+                · {{ in_progress.aircraft.manufacturer }} {{ in_progress.aircraft.model }}
+            </span>
+            <p style="margin:0.5rem 0 0 0;"><a href="{% url 'logbook:flight_detail' in_progress.pk %}" style="color:inherit;text-decoration:underline;">Ver vuelo</a></p>
+        {% else %}
+            <span class="hint">Ninguno en este momento</span>
+        {% endif %}
+    </div>
+    <div class="card">
+        <span class="label">Vuelos completados</span>
+        <strong>{{ completed_count }}</strong>
+        <span class="hint">Historial total</span>
+    </div>
+    <div class="card">
+        <span class="label">Horas acumuladas (motor)</span>
+        <strong>{{ total_hours|floatformat:1 }}h</strong>
+        <span class="hint">Suma de vuelos completados</span>
+    </div>
+</div>
+
+<div class="section-title">
+    <h2>Últimos vuelos</h2>
+    <a href="{% url 'logbook:flight_list' %}">Ver todos</a>
+</div>
+
+{% if latest_flights %}
+<table class="dash-table">
+    <thead>
+        <tr>
+            <th>Fecha</th>
+            <th>Aeronave</th>
+            <th>Ruta</th>
+            <th>Estado</th>
+            <th>Duración</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for f in latest_flights %}
+        <tr>
+            <td><a href="{% url 'logbook:flight_detail' f.pk %}">{{ f.planned_date|date:"d M Y" }}</a></td>
+            <td>{{ f.aircraft.manufacturer }} {{ f.aircraft.model }}</td>
+            <td>{{ f.departure_airport.icao_code }} → {{ f.arrival_airport.icao_code }}</td>
+            <td>
+                {% if f.status == "PLANNED" %}<span class="badge badge-planned">{{ f.get_status_display }}</span>
+                {% elif f.status == "IN_PROGRESS" %}<span class="badge badge-progress">{{ f.get_status_display }}</span>
+                {% elif f.status == "COMPLETED" %}<span class="badge badge-done">{{ f.get_status_display }}</span>
+                {% else %}<span class="badge badge-cancel">{{ f.get_status_display }}</span>
+                {% endif %}
+            </td>
+            <td>{% if f.total_time %}{{ f.total_time }}{% else %}—{% endif %}</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% else %}
+<p>No hay vuelos registrados. <a href="{% url 'logbook:flight_create' %}">Crear vuelo previsto</a>.</p>
+{% endif %}
+{% endblock %}
