@@ -1,5 +1,6 @@
 from datetime import timedelta
 
+from django.contrib.auth.models import User
 from django.db import models
 
 from aircraft.models import Aircraft
@@ -29,6 +30,13 @@ class FlightLog(models.Model):
         COMPLETED = "COMPLETED", "Completado"
         CANCELLED = "CANCELLED", "Cancelado"
 
+    pilot = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name="flights",
+        null=True,
+        blank=True,
+    )
     planned_date = models.DateField(
         help_text="Fecha prevista o fecha del vuelo planificado.",
     )

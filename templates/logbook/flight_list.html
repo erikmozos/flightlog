@@ -62,12 +62,12 @@
                 {% if f.status == "PLANNED" %}
                     <form method="post" action="{% url 'logbook:flight_start' f.pk %}">
                         {% csrf_token %}
-                        <button type="submit" class="btn-action btn-start">Iniciar</button>
+                        <button type="submit" class="btn-action btn-start">Iniciar vuelo</button>
                     </form>
                 {% elif f.status == "IN_PROGRESS" %}
                     <form method="post" action="{% url 'logbook:flight_finish' f.pk %}">
                         {% csrf_token %}
-                        <button type="submit" class="btn-action btn-finish">Finalizar</button>
+                        <button type="submit" class="btn-action btn-finish">Finalizar vuelo</button>
                     </form>
                 {% else %}
                     <span style="color:#999;">—</span>

@@ -8,9 +8,20 @@
 <body>
     <header>
         <p>
+            {% if user.is_authenticated %}
             <a href="{% url 'logbook:dashboard' %}">Panel</a> ·
             <a href="{% url 'logbook:flight_list' %}">Vuelos</a> ·
             <a href="{% url 'logbook:flight_create' %}">Nuevo vuelo</a>
+            · {{ user.username }}
+            ·
+            <form method="post" action="{% url 'users:logout' %}" style="display:inline;">
+                {% csrf_token %}
+                <button type="submit">Salir</button>
+            </form>
+            {% else %}
+            <a href="{% url 'users:login' %}">Iniciar sesión</a> ·
+            <a href="{% url 'users:register' %}">Registro</a>
+            {% endif %}
         </p>
     </header>
     <main>

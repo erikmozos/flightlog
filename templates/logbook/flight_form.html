@@ -1,10 +1,10 @@
 {% extends "base.html" %}
 
-{% block title %}Nuevo vuelo previsto — Flightlog{% endblock %}
+{% block title %}Planificar vuelo — Flightlog{% endblock %}
 
 {% block content %}
-<h1>Nuevo vuelo previsto</h1>
-<p>Se crea en estado <strong>Planificado</strong>. Las horas reales de motor se registran desde el detalle del vuelo.</p>
+<h1>Planificar nuevo vuelo</h1>
+<p>No se piden tiempos reales de motor. El vuelo se guarda como <strong>Planificado</strong>; el encendido/apagado se registra con <strong>Iniciar</strong> y <strong>Finalizar</strong> desde el vuelo.</p>
 <form method="post" action="">
     {% csrf_token %}
     {% if form.non_field_errors %}
@@ -24,7 +24,7 @@
             </tr>
         {% endfor %}
     </table>
-    <p><button type="submit">Crear vuelo previsto</button></p>
+    <p><button type="submit">Guardar vuelo previsto</button></p>
 </form>
 <p><a href="{% url 'logbook:flight_list' %}">Volver a la lista</a></p>
 {% endblock %}

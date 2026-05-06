@@ -5,5 +5,5 @@ from .models import Aircraft
 
 @admin.register(Aircraft)
 class AircraftAdmin(admin.ModelAdmin):
-    list_display = ("registration", "manufacturer", "model")
-    search_fields = ("registration", "manufacturer", "model")
+    list_display = ("registration", "manufacturer", "model", "icao_code", "category")
+    search_fields = ("registration", "manufacturer", "model", "icao_code", "category")

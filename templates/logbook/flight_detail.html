@@ -3,111 +3,196 @@
 {% block title %}Vuelo {{ flight.planned_date }} — Flightlog{% endblock %}
 
 {% block content %}
-<h1>Vuelo ({{ flight.get_status_display }})</h1>
-<p><strong>Fecha planificada:</strong> {{ flight.planned_date }}</p>
+<style>
+    .fd-header { display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: 1rem; margin-bottom: 1.25rem; }
+    .fd-header h1 { margin: 0 0 0.35rem 0; font-size: 1.4rem; }
+    .fd-header .subtitle { margin: 0; color: #555; font-size: 0.95rem; }
+    .badge { display: inline-block; padding: 0.2rem 0.55rem; border-radius: 999px; font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.02em; }
+    .badge-planned { background: #eceff1; color: #455a64; }
+    .badge-progress { background: #e3f2fd; color: #0d47a1; }
+    .badge-done { background: #e8f5e9; color: #1b5e20; }
+    .badge-cancel { background: #ffebee; color: #b71c1c; }
+    .fd-card { border: 1px solid #e0e0e0; border-radius: 10px; padding: 1.25rem 1.35rem; background: #fff; margin-bottom: 1.5rem; box-shadow: 0 1px 3px rgba(0,0,0,0.06); }
+    .fd-card-done { border-color: #c8e6c9; background: #fafcfa; }
+    .fd-card-header { display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem; margin-bottom: 1.1rem; flex-wrap: wrap; }
+    .fd-card-header h2 { margin: 0; font-size: 1.05rem; color: #333; }
+    .fd-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem 1.5rem; }
+    .fd-field .fd-label { font-size: 0.75rem; font-weight: 600; color: #666; text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 0.25rem; }
+    .fd-field .fd-value { font-size: 1rem; color: #111; }
+    .fd-field .fd-value.pending { font-style: italic; color: #888; }
+    .fd-route { font-size: 1.15rem; font-weight: 600; }
+    .fd-route small { display: block; font-weight: 400; font-size: 0.85rem; color: #555; margin-top: 0.2rem; }
+    .fd-aircraft .reg { color: #0d47a1; font-weight: 600; }
+    .fd-duration-big { font-variant-numeric: tabular-nums; font-size: 1.75rem; font-weight: 700; color: #0d47a1; }
+    .fd-duration-row { margin-top: 0.5rem; }
+    .fd-card-active { background: #0d2439; color: #e8eaf0; border-color: #0d2439; }
+    .fd-card-active .fd-card-header h2 { color: #e8eaf0; }
+    .fd-card-active .fd-label { color: #b0bec5; }
+    .fd-card-active .fd-value { color: #fff; }
+    .fd-card-active .fd-value.pending { color: #90a4ae; }
+    .fd-card-active .fd-duration-big { color: #ffab40; }
+    .fd-obs { margin-top: 1.25rem; padding-top: 1rem; border-top: 1px solid #eee; }
+    .fd-card-active .fd-obs { border-top-color: rgba(255,255,255,0.12); }
+    .fd-obs .fd-label { margin-bottom: 0.35rem; }
+    .btn-primary { padding: 0.55rem 1.2rem; background: #0d47a1; color: #fff; border: none; border-radius: 6px; font-weight: 600; cursor: pointer; font-size: 0.95rem; }
+    .btn-primary:hover { background: #1565c0; }
+    .btn-danger { padding: 0.55rem 1.2rem; background: #c62828; color: #fff; border: none; border-radius: 6px; font-weight: 600; cursor: pointer; font-size: 0.95rem; }
+    .btn-danger:hover { background: #b71c1c; }
+    .fd-actions { margin-top: 1.25rem; }
+    .fd-actions form { display: inline; margin-right: 0.5rem; }
+    .fd-actions small { display: block; margin-top: 0.5rem; color: #666; }
+    .fd-card-active .fd-actions small { color: #90a4ae; }
+    .charts-wrap { display: flex; flex-direction: column; gap: 1.75rem; margin: 1.5rem 0; }
+    .charts-airport { border: 1px solid #e0e0e0; border-radius: 10px; padding: 1rem 1.25rem; background: #fafafa; }
+    .charts-airport-empty { background: #fff; }
+    .charts-airport-title { margin: 0 0 1rem 0; font-size: 1.1rem; display: flex; flex-wrap: wrap; align-items: baseline; gap: 0.35rem 0.75rem; }
+    .charts-role { font-weight: 700; color: #0d47a1; text-transform: uppercase; font-size: 0.75rem; letter-spacing: 0.06em; }
+    .charts-icao { font-weight: 700; }
+    .charts-name { color: #555; font-weight: 400; font-size: 0.95rem; }
+    .charts-empty-msg { margin: 0; color: #757575; font-size: 0.95rem; }
+    .chart-type-block { margin-bottom: 1.25rem; }
+    .chart-type-block:last-child { margin-bottom: 0; }
+    .chart-type-heading { margin: 0 0 0.5rem 0; font-size: 0.85rem; font-weight: 700; color: #37474f; text-transform: uppercase; letter-spacing: 0.04em; border-bottom: 2px solid #0d47a1; padding-bottom: 0.25rem; display: inline-block; }
+    .chart-list { list-style: none; margin: 0; padding: 0; }
+    .chart-item { padding: 0.65rem 0; border-bottom: 1px solid #eee; }
+    .chart-item:last-child { border-bottom: none; }
+    .chart-item-title { font-weight: 600; }
+    .chart-item-desc { margin: 0.25rem 0 0.35rem; font-size: 0.88rem; color: #555; }
+    .chart-item-links { font-size: 0.88rem; }
+    .chart-link { color: #0d47a1; font-weight: 600; }
+    .chart-link-sep { color: #bdbdbd; margin: 0 0.35rem; }
+    .chart-link-muted { color: #9e9e9e; font-size: 0.82rem; }
+</style>
 
-<h2>Itinerario</h2>
-<dl>
-    <dt>Aeronave</dt>
-    <dd>{{ flight.aircraft }}</dd>
-    <dt>Salida</dt>
-    <dd>{{ flight.departure_airport.icao_code }} — {{ flight.departure_airport.name }} ({{ flight.departure_airport.city }}, {{ flight.departure_airport.country }})</dd>
-    <dt>Llegada</dt>
-    <dd>{{ flight.arrival_airport.icao_code }} — {{ flight.arrival_airport.name }} ({{ flight.arrival_airport.city }}, {{ flight.arrival_airport.country }})</dd>
-    <dt>Salida prevista (hora)</dt>
-    <dd>{% if flight.planned_departure_time %}{{ flight.planned_departure_time }}{% else %}—{% endif %}</dd>
-    <dt>Encendido motores</dt>
-    <dd>{% if flight.engine_start_time %}{{ flight.engine_start_time }}{% else %}—{% endif %}</dd>
-    <dt>Apagado motores</dt>
-    <dd>{% if flight.engine_stop_time %}{{ flight.engine_stop_time }}{% else %}—{% endif %}</dd>
-    <dt>Duración (motor)</dt>
-    <dd>
-        {% if flight.is_completed and flight.total_time %}
-            {{ flight.total_time }}
-        {% elif flight.is_planned or flight.is_in_progress %}
-            (se calcula al finalizar)
-        {% else %}
-            —
+<div class="fd-header">
+    <div>
+        <h1>Detalle del vuelo</h1>
+        <p class="subtitle">{{ flight.planned_date|date:"d M Y" }} · {{ flight.departure_airport.icao_code }} → {{ flight.arrival_airport.icao_code }}</p>
+    </div>
+    <div>
+        {% if flight.status == "PLANNED" %}<span class="badge badge-planned">{{ flight.get_status_display }}</span>
+        {% elif flight.status == "IN_PROGRESS" %}<span class="badge badge-progress">{{ flight.get_status_display }}</span>
+        {% elif flight.status == "COMPLETED" %}<span class="badge badge-done">{{ flight.get_status_display }}</span>
+        {% else %}<span class="badge badge-cancel">{{ flight.get_status_display }}</span>
         {% endif %}
-    </dd>
-    <dt>Notas</dt>
-    <dd>{% if flight.remarks %}{{ flight.remarks|linebreaks }}{% else %}—{% endif %}</dd>
-</dl>
+    </div>
+</div>
 
-<h2>Acciones</h2>
-{% if flight.is_planned %}
-    <form method="post" action="{% url 'logbook:flight_start' flight.pk %}" style="display:inline;">
-        {% csrf_token %}
-        <button type="submit">Iniciar vuelo</button>
-    </form>
-    <p><small>Registra el encendido de motores a la hora actual.</small></p>
-{% elif flight.is_in_progress %}
-    <form method="post" action="{% url 'logbook:flight_finish' flight.pk %}" style="display:inline;">
-        {% csrf_token %}
-        <button type="submit">Finalizar vuelo</button>
-    </form>
-    <p><small>Registra el apagado de motores, calcula la duración y marca el vuelo como completado.</small></p>
-{% elif flight.is_completed %}
-    <p>Vuelo completado.</p>
-{% elif flight.status == "CANCELLED" %}
-    <p>Vuelo cancelado.</p>
-{% endif %}
+<div class="fd-card{% if flight.status == 'IN_PROGRESS' %} fd-card-active{% elif flight.status == 'COMPLETED' %} fd-card-done{% endif %}">
+    <div class="fd-card-header">
+        <h2>{% if flight.status == "COMPLETED" %}Resumen del vuelo{% else %}Información del vuelo{% endif %}</h2>
+    </div>
 
-<h2>Cartas — salida: {{ flight.departure_airport.icao_code }}</h2>
-{% if departure_charts_by_type %}
-    {% for type_label, charts in departure_charts_by_type.items %}
-        <h3>{{ type_label }}</h3>
-        <ul>
-            {% for c in charts %}
-                <li>
-                    <strong>{{ c.title }}</strong>
-                    {% if c.description %}<br><small>{{ c.description|truncatewords:30 }}</small>{% endif %}
-                    <br>
-                    {% if c.pdf_file %}
-                        <a href="{{ c.pdf_file.url }}">Abrir PDF</a>
-                    {% endif %}
-                    {% if c.pdf_file and c.external_url %} · {% endif %}
-                    {% if c.external_url %}
-                        <a href="{{ c.external_url }}" rel="noopener noreferrer" target="_blank">Enlace externo</a>
-                    {% endif %}
-                    {% if not c.pdf_file and not c.external_url %}
-                        (sin enlace; completa en admin)
-                    {% endif %}
-                </li>
-            {% endfor %}
-        </ul>
-    {% endfor %}
-{% else %}
-    <p>No hay cartas activas para este aeropuerto.</p>
-{% endif %}
+    <div class="fd-grid">
+        <div class="fd-field">
+            <div class="fd-label">Estado</div>
+            <div class="fd-value">{{ flight.get_status_display }}</div>
+        </div>
+        <div class="fd-field">
+            <div class="fd-label">Fecha</div>
+            <div class="fd-value">{{ flight.planned_date|date:"d M Y" }}</div>
+        </div>
+        <div class="fd-field fd-aircraft">
+            <div class="fd-label">Aeronave</div>
+            <div class="fd-value">
+                {{ flight.aircraft.manufacturer }} {{ flight.aircraft.model }}
+                <span class="reg">({{ flight.aircraft.registration }})</span>
+            </div>
+        </div>
+        <div class="fd-field">
+            <div class="fd-label">Ruta</div>
+            <div class="fd-value fd-route">
+                {{ flight.departure_airport.icao_code }} → {{ flight.arrival_airport.icao_code }}
+                <small>{{ flight.departure_airport.name }} — {{ flight.arrival_airport.name }}</small>
+                <small>{{ flight.departure_airport.city }} → {{ flight.arrival_airport.city }}</small>
+            </div>
+        </div>
+        <div class="fd-field">
+            <div class="fd-label">Hora prevista (salida)</div>
+            <div class="fd-value">{% if flight.planned_departure_time %}{{ flight.planned_departure_time }}{% else %}—{% endif %}</div>
+        </div>
+        <div class="fd-field">
+            <div class="fd-label">Hora real — inicio (motores)</div>
+            <div class="fd-value{% if not flight.engine_start_time %} pending{% endif %}">
+                {% if flight.engine_start_time %}{{ flight.engine_start_time }}{% else %}Pendiente{% endif %}
+            </div>
+        </div>
+        <div class="fd-field">
+            <div class="fd-label">Hora real — fin (motores)</div>
+            <div class="fd-value{% if not flight.engine_stop_time %} pending{% endif %}">
+                {% if flight.engine_stop_time %}{{ flight.engine_stop_time }}{% else %}Pendiente{% endif %}
+            </div>
+        </div>
+        <div class="fd-field fd-duration-row">
+            <div class="fd-label">Duración (tiempo de motor)</div>
+            {% if flight.status == "COMPLETED" and flight.total_time %}
+                <div class="fd-value fd-duration-big">{{ flight.total_time }}</div>
+            {% elif flight.status == "IN_PROGRESS" and flight.engine_start_time %}
+                <div class="fd-value fd-duration-big" id="timer">{% if elapsed_in_progress_display %}{{ elapsed_in_progress_display }}{% else %}00:00:00{% endif %}</div>
+                <div class="fd-value pending" style="font-size:0.85rem;margin-top:0.25rem;">Cronómetro en vivo</div>
+            {% else %}
+                <div class="fd-value pending">{% if flight.status == "PLANNED" %}Se calcula al finalizar el vuelo{% else %}—{% endif %}</div>
+            {% endif %}
+        </div>
+    </div>
 
-<h2>Cartas — llegada: {{ flight.arrival_airport.icao_code }}</h2>
-{% if arrival_charts_by_type %}
-    {% for type_label, charts in arrival_charts_by_type.items %}
-        <h3>{{ type_label }}</h3>
-        <ul>
-            {% for c in charts %}
-                <li>
-                    <strong>{{ c.title }}</strong>
-                    {% if c.description %}<br><small>{{ c.description|truncatewords:30 }}</small>{% endif %}
-                    <br>
-                    {% if c.pdf_file %}
-                        <a href="{{ c.pdf_file.url }}">Abrir PDF</a>
-                    {% endif %}
-                    {% if c.pdf_file and c.external_url %} · {% endif %}
-                    {% if c.external_url %}
-                        <a href="{{ c.external_url }}" rel="noopener noreferrer" target="_blank">Enlace externo</a>
-                    {% endif %}
-                    {% if not c.pdf_file and not c.external_url %}
-                        (sin enlace; completa en admin)
-                    {% endif %}
-                </li>
-            {% endfor %}
-        </ul>
-    {% endfor %}
-{% else %}
-    <p>No hay cartas activas para este aeropuerto.</p>
-{% endif %}
+    {% if flight.remarks %}
+    <div class="fd-obs">
+        <div class="fd-label">Observaciones</div>
+        <div class="fd-value">{{ flight.remarks|linebreaks }}</div>
+    </div>
+    {% endif %}
+
+    {% if flight.status == "PLANNED" or flight.status == "IN_PROGRESS" or flight.status == "CANCELLED" %}
+    <div class="fd-actions">
+        {% if flight.status == "PLANNED" %}
+            <form method="post" action="{% url 'logbook:flight_start' flight.pk %}">
+                {% csrf_token %}
+                <button type="submit" class="btn-primary">Iniciar vuelo</button>
+            </form>
+            <small>Registra el encendido de motores a la hora actual.</small>
+        {% elif flight.status == "IN_PROGRESS" %}
+            <form method="post" action="{% url 'logbook:flight_finish' flight.pk %}">
+                {% csrf_token %}
+                <button type="submit" class="btn-danger">Finalizar vuelo</button>
+            </form>
+            <small>Registra el apagado de motores, calcula la duración y marca el vuelo como completado.</small>
+        {% elif flight.status == "CANCELLED" %}
+            <p class="fd-value" style="margin:0;">Este vuelo está cancelado. No hay acciones disponibles.</p>
+        {% endif %}
+    </div>
+    {% endif %}
+</div>
+
+<h2 style="margin-top:2rem;font-size:1.15rem;">Cartas aeronáuticas</h2>
+<p class="subtitle" style="margin:0 0 0.5rem;color:#555;">Por aeropuerto de la ruta, agrupadas por tipo (SID, STAR, aproximación, etc.).</p>
+
+<div class="charts-wrap">
+    {% include "logbook/_charts_airport_block.html" with airport=flight.departure_airport charts_by_type=departure_charts_by_type role_label="Salida" %}
+    {% include "logbook/_charts_airport_block.html" with airport=flight.arrival_airport charts_by_type=arrival_charts_by_type role_label="Llegada" %}
+</div>
 
 <p><a href="{% url 'logbook:flight_list' %}">Volver a la lista</a></p>
+
+{% if flight.status == "IN_PROGRESS" and flight.engine_start_time %}
+<script>
+(function () {
+    var el = document.getElementById("timer");
+    if (!el) return;
+    var startMs = new Date("{{ flight.engine_start_time|date:'c' }}").getTime();
+    function pad(n) { return String(n).padStart(2, "0"); }
+    function tick() {
+        var diff = Math.max(0, Date.now() - startMs);
+        var h = Math.floor(diff / 3600000);
+        diff %= 3600000;
+        var m = Math.floor(diff / 60000);
+        diff %= 60000;
+        var s = Math.floor(diff / 1000);
+        el.textContent = pad(h) + ":" + pad(m) + ":" + pad(s);
+    }
+    tick();
+    setInterval(tick, 1000);
+})();
+</script>
+{% endif %}
 {% endblock %}

@@ -48,6 +48,7 @@ INSTALLED_APPS = [
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
+    'django.middleware.locale.LocaleMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
@@ -108,7 +109,11 @@ AUTH_PASSWORD_VALIDATORS = [
 # Internationalization
 # https://docs.djangoproject.com/en/6.0/topics/i18n/
 
-LANGUAGE_CODE = 'en-us'
+LANGUAGE_CODE = 'es'
+
+LANGUAGES = [
+    ('es', 'Español'),
+]
 
 TIME_ZONE = 'Europe/Madrid'
 
@@ -125,3 +130,7 @@ STATIC_URL = "static/"
 # Archivos subidos (PDF de cartas, etc.) — solo desarrollo; en producción el servidor web sirve MEDIA_ROOT
 MEDIA_URL = "media/"
 MEDIA_ROOT = BASE_DIR / "media"
+
+LOGIN_URL = "users:login"
+LOGIN_REDIRECT_URL = "logbook:dashboard"
+LOGOUT_REDIRECT_URL = "users:login"
