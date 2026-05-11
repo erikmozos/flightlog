@@ -1,41 +1,68 @@
 {# Parámetros: airport, charts_by_type, role_label (ej. "Salida" o "Llegada") #}
 {% if charts_by_type %}
-<section class="charts-airport" aria-label="Cartas {{ role_label }} {{ airport.icao_code }}">
-    <h2 class="charts-airport-title">
-        <span class="charts-role">{{ role_label }}</span>
-        <span class="charts-icao">{{ airport.icao_code }}</span>
-        <span class="charts-name">{{ airport.name }}</span>
-    </h2>
-    <div class="charts-by-type">
-        {% for type_label, charts in charts_by_type.items %}
-        <div class="chart-type-block">
-            <h3 class="chart-type-heading">{{ type_label }}</h3>
-            <ul class="chart-list">
-                {% for c in charts %}
-                <li class="chart-item">
-                    <div class="chart-item-title">{{ c.title }}</div>
-                    {% if c.description %}<p class="chart-item-desc">{{ c.description|truncatewords:40 }}</p>{% endif %}
-                    <div class="chart-item-links">
-                        {% if c.pdf_file %}
-                        <a href="{{ c.pdf_file.url }}" class="chart-link">PDF</a>
-                        {% endif %}
-                        {% if c.pdf_file and c.external_url %}<span class="chart-link-sep">·</span>{% endif %}
-                        {% if c.external_url %}
-                        <a href="{{ c.external_url }}" class="chart-link" rel="noopener noreferrer" target="_blank">Web</a>
-                        {% endif %}
-                        {% if not c.pdf_file and not c.external_url %}
-                        <span class="chart-link-muted">Sin archivo ni enlace (admin)</span>
-                        {% endif %}
-                    </div>
-                </li>
-                {% endfor %}
-            </ul>
+<section class="charts-airport js-chart-airport-viewer charts-airport--{% if role_label == 'Salida' %}dep{% else %}arr{% endif %}" aria-label="Cartas {{ role_label }} {{ airport.icao_code }}">
+    <header class="charts-airport-head">
+        <h2 class="charts-airport-title">
+            <span class="charts-role">{{ role_label }}</span>
+            <span class="charts-icao">{{ airport.icao_code }}</span>
+            <span class="charts-name">{{ airport.name }}</span>
+        </h2>
+    </header>
+
+    <div class="chart-airport-body">
+        <div class="chart-kind-tabs" role="tablist" aria-label="Tipo de carta · {{ airport.icao_code }}">
+            {% for type_label, charts in charts_by_type.items %}
+            <button type="button"
+                    class="chart-kind-tab{% if forloop.first %} is-active{% endif %}"
+                    role="tab"
+                    id="tab-{{ airport.icao_code }}-{{ role_label|slugify }}-{{ forloop.counter0 }}"
+                    aria-controls="panel-{{ airport.icao_code }}-{{ role_label|slugify }}-{{ forloop.counter0 }}"
+                    aria-selected="{% if forloop.first %}true{% else %}false{% endif %}"
+                    data-kind-index="{{ forloop.counter0 }}"
+                    tabindex="{% if forloop.first %}0{% else %}-1{% endif %}">{{ type_label }}</button>
+            {% endfor %}
         </div>
-        {% endfor %}
+
+        <div class="chart-chart-toolbar">
+            <span class="chart-viewer-label">Carta</span>
+            <div class="chart-chart-toolbar-inner">
+                {% for type_label, charts in charts_by_type.items %}
+                <div class="chart-pick-panel"
+                     id="panel-{{ airport.icao_code }}-{{ role_label|slugify }}-{{ forloop.counter0 }}"
+                     role="tabpanel"
+                     aria-labelledby="tab-{{ airport.icao_code }}-{{ role_label|slugify }}-{{ forloop.counter0 }}"
+                     {% if not forloop.first %}hidden{% endif %}>
+                    <select class="chart-viewer-select" aria-label="Carta · {{ type_label }} · {{ airport.icao_code }}">
+                        {% for c in charts %}
+                        <option value="{{ forloop.counter0 }}"
+                                {% if c.pdf_file %}data-pdf="{{ c.pdf_file.url }}"{% endif %}
+                                {% if c.external_url %}data-web="{{ c.external_url }}"{% endif %}
+                                data-desc="{{ c.description|default:''|escapejs }}">{{ c.title }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                {% endfor %}
+                <div class="chart-viewer-actions">
+                    <a href="#" class="chart-viewer-open fd-btn-outline" style="text-decoration:none;white-space:nowrap;" target="_blank" rel="noopener noreferrer">Abrir</a>
+                    <a href="#" class="chart-viewer-download fd-btn-outline" style="text-decoration:none;white-space:nowrap;display:none;" download>Descargar</a>
+                </div>
+            </div>
+        </div>
+
+        <p class="chart-viewer-desc" hidden></p>
+        <p class="chart-viewer-tip">Si la vista no carga (p. ej. sitio externo), usa «Abrir» en una pestaña nueva.</p>
+
+        <div class="chart-viewer-frame-wrap">
+            <iframe class="chart-viewer-iframe" title="Vista de carta · {{ airport.icao_code }}" hidden></iframe>
+            <div class="chart-viewer-external-fallback" hidden>
+                <p>Los enlaces a sitios externos no se pueden incrustar aquí (política del sitio). Pulsa <strong>Abrir</strong> para ver la carta en una pestaña nueva.</p>
+            </div>
+            <div class="chart-viewer-empty" hidden>Sin PDF ni enlace para esta carta.</div>
+        </div>
     </div>
 </section>
 {% else %}
-<section class="charts-airport charts-airport-empty" aria-label="Cartas {{ role_label }}">
+<section class="charts-airport charts-airport-empty charts-airport--{% if role_label == 'Salida' %}dep{% else %}arr{% endif %}" aria-label="Cartas {{ role_label }}">
     <h2 class="charts-airport-title">
         <span class="charts-role">{{ role_label }}</span>
         <span class="charts-icao">{{ airport.icao_code }}</span>

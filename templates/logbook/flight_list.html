@@ -1,83 +1,452 @@
 {% extends "base.html" %}
 
-{% block title %}Historial de vuelos — Flightlog{% endblock %}
+{% block title %}Historial de vuelos · Flightlog{% endblock %}
+
+{% block extra_head %}
+<style>
+    .log-bc {
+        font-size: 0.8125rem;
+        color: var(--fl-muted);
+        margin-bottom: 0.35rem;
+    }
+    .log-bc a { color: var(--fl-muted); text-decoration: none; font-weight: 500; }
+    .log-bc a:hover { color: var(--fl-navy); }
+    .log-bc span.sep { margin: 0 0.35rem; color: var(--fl-border); }
+
+    .log-page-head {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 1rem;
+        margin-bottom: 1.5rem;
+    }
+    .log-page-head h1 {
+        margin: 0;
+        font-size: 1.65rem;
+        font-weight: 700;
+        color: var(--fl-navy);
+        letter-spacing: -0.02em;
+    }
+    .log-toolbar {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 0.75rem;
+    }
+    .log-search {
+        display: flex;
+        align-items: center;
+        border: 1px solid var(--fl-border);
+        border-radius: 12px;
+        background: var(--fl-surface);
+        overflow: hidden;
+        min-width: 220px;
+    }
+    .log-search input[type="search"] {
+        border: none;
+        padding: 0.65rem 0.85rem;
+        font: inherit;
+        flex: 1;
+        min-width: 0;
+    }
+    .log-search input:focus { outline: none; }
+    .log-search button {
+        border: none;
+        background: var(--fl-bg);
+        padding: 0 0.85rem;
+        cursor: pointer;
+        color: var(--fl-muted);
+    }
+    .log-search button:hover { color: var(--fl-navy); }
+    .log-btn-primary {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.45rem;
+        padding: 0.7rem 1.1rem;
+        background: var(--fl-navy);
+        color: #fff !important;
+        text-decoration: none;
+        border-radius: 12px;
+        font-weight: 600;
+        font-size: 0.9rem;
+        box-shadow: var(--fl-shadow);
+        border: none;
+        cursor: pointer;
+    }
+    .log-btn-primary:hover { background: var(--fl-navy-hover); color: #fff !important; }
+
+    .log-stats {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 1rem;
+        margin-bottom: 1.5rem;
+    }
+    @media (max-width: 900px) {
+        .log-stats { grid-template-columns: 1fr; }
+    }
+    .log-stat {
+        background: var(--fl-surface);
+        border-radius: var(--fl-radius);
+        padding: 1.15rem 1.2rem;
+        box-shadow: var(--fl-shadow);
+        border: 1px solid var(--fl-border);
+        display: flex;
+        gap: 1rem;
+        align-items: flex-start;
+    }
+    .log-stat-icon {
+        width: 44px;
+        height: 44px;
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+    }
+    .log-stat-icon--time { background: #e0f2fe; color: #0369a1; }
+    .log-stat-icon--land { background: #dcfce7; color: #15803d; }
+    .log-stat-icon--cert { background: #fee2e2; color: #b91c1c; }
+    .log-stat-body .log-stat-label {
+        display: block;
+        font-size: 0.8rem;
+        font-weight: 500;
+        color: var(--fl-muted);
+        margin-bottom: 0.2rem;
+    }
+    .log-stat-body strong {
+        font-size: 1.5rem;
+        font-weight: 700;
+        color: var(--fl-text);
+        letter-spacing: -0.02em;
+    }
+    .log-stat-body .log-trend {
+        display: block;
+        font-size: 0.75rem;
+        font-weight: 600;
+        color: #15803d;
+        margin-top: 0.35rem;
+    }
+    .log-stat-body .log-stat-hint {
+        display: block;
+        font-size: 0.75rem;
+        color: var(--fl-muted);
+        margin-top: 0.35rem;
+        line-height: 1.35;
+    }
+    .log-stat-body .log-stat-warn {
+        display: block;
+        font-size: 0.75rem;
+        font-weight: 600;
+        color: #b91c1c;
+        margin-top: 0.35rem;
+    }
+
+    .log-panel {
+        background: var(--fl-surface);
+        border-radius: var(--fl-radius);
+        box-shadow: var(--fl-shadow);
+        border: 1px solid var(--fl-border);
+        overflow: hidden;
+    }
+    .log-table-wrap { overflow-x: auto; }
+    table.log-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 0.875rem;
+    }
+    table.log-table th {
+        text-align: left;
+        padding: 0.65rem 1.1rem;
+        font-size: 0.68rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        color: var(--fl-muted);
+        background: var(--fl-bg);
+        border-bottom: 1px solid var(--fl-border);
+    }
+    table.log-table td {
+        padding: 0.85rem 1.1rem;
+        border-bottom: 1px solid var(--fl-border);
+        vertical-align: middle;
+    }
+    table.log-table tbody tr:last-child td { border-bottom: none; }
+    table.log-table tbody tr:hover td { background: rgba(243,244,246,0.55); }
+    table.log-table td a.log-date-link {
+        font-weight: 600;
+        color: var(--fl-text);
+        text-decoration: none;
+    }
+    table.log-table td a.log-date-link:hover { color: var(--fl-link); }
+    .log-ac {
+        display: flex;
+        align-items: center;
+        gap: 0.6rem;
+    }
+    .log-ac-icon {
+        color: var(--fl-navy);
+        opacity: 0.85;
+        flex-shrink: 0;
+    }
+    .log-ac strong { display: block; font-weight: 600; color: var(--fl-text); }
+    .log-ac small { color: var(--fl-muted); font-size: 0.78rem; }
+
+    .log-badge {
+        display: inline-block;
+        padding: 0.2rem 0.55rem;
+        border-radius: 999px;
+        font-size: 0.68rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.02em;
+    }
+    .log-badge--planned { background: #f3f4f6; color: #4b5563; }
+    .log-badge--progress { background: #dbeafe; color: #1e40af; }
+    .log-badge--done { background: #dcfce7; color: #166534; }
+    .log-badge--cancel { background: #fee2e2; color: #b91c1c; }
+    .log-badge-simbrief {
+        margin-left: 0.35rem;
+        display: inline-block;
+        padding: 0.12rem 0.45rem;
+        border-radius: 6px;
+        font-size: 0.6rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        vertical-align: middle;
+        background: #fef3c7;
+        color: #92400e;
+    }
+    .log-flight-no { margin-left: 0.25rem; font-size: 0.75rem; font-weight: 600; color: var(--fl-muted); vertical-align: middle; }
+
+    .log-actions form { display: inline; margin: 0; }
+    .log-btn-action {
+        padding: 0.35rem 0.7rem;
+        border-radius: 8px;
+        font-size: 0.75rem;
+        font-weight: 600;
+        cursor: pointer;
+        border: 1px solid var(--fl-border);
+        background: var(--fl-surface);
+    }
+    .log-btn-action--start { border-color: #93c5fd; color: #1d4ed8; }
+    .log-btn-action--start:hover { background: #eff6ff; }
+    .log-btn-action--finish { border-color: #86efac; color: #166534; }
+    .log-btn-action--finish:hover { background: #f0fdf4; }
+    .log-actions-muted { color: var(--fl-muted); font-size: 0.8rem; }
+
+    .log-footer {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        justify-content: space-between;
+        gap: 0.75rem;
+        padding: 0.9rem 1.1rem;
+        border-top: 1px solid var(--fl-border);
+        font-size: 0.8125rem;
+        color: var(--fl-muted);
+        background: var(--fl-surface);
+    }
+    .log-pager {
+        display: flex;
+        align-items: center;
+        gap: 0.35rem;
+    }
+    .log-pager a, .log-pager span {
+        min-width: 2rem;
+        height: 2rem;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 8px;
+        font-size: 0.8125rem;
+        font-weight: 500;
+        text-decoration: none;
+        color: var(--fl-text);
+        border: 1px solid transparent;
+    }
+    .log-pager a:hover { background: var(--fl-bg); border-color: var(--fl-border); }
+    .log-pager .is-current {
+        background: var(--fl-navy);
+        color: #fff !important;
+        font-weight: 600;
+    }
+    .log-pager .is-disabled {
+        opacity: 0.35;
+        pointer-events: none;
+    }
+
+    .log-empty {
+        padding: 2.5rem 1.5rem;
+        text-align: center;
+        color: var(--fl-muted);
+    }
+    .log-empty a { font-weight: 600; }
+</style>
+{% endblock %}
 
 {% block content %}
-<style>
-    .list-header { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 1rem; margin-bottom: 1rem; }
-    .list-header h1 { margin: 0; font-size: 1.35rem; }
-    .btn-primary { display: inline-block; padding: 0.45rem 0.9rem; background: #0d47a1; color: #fff; text-decoration: none; border-radius: 6px; font-weight: 600; border: none; cursor: pointer; font-size: 0.9rem; }
-    .btn-primary:hover { background: #1565c0; color: #fff; }
-    .btn-action { padding: 0.3rem 0.65rem; border-radius: 4px; font-size: 0.8rem; font-weight: 600; cursor: pointer; border: 1px solid #ccc; background: #fff; }
-    .btn-start { border-color: #1565c0; color: #1565c0; }
-    .btn-start:hover { background: #e3f2fd; }
-    .btn-finish { border-color: #2e7d32; color: #2e7d32; }
-    .btn-finish:hover { background: #e8f5e9; }
-    table.flight-table { width: 100%; border-collapse: collapse; font-size: 0.92rem; }
-    table.flight-table th, table.flight-table td { text-align: left; padding: 0.55rem 0.5rem; border-bottom: 1px solid #eee; vertical-align: middle; }
-    table.flight-table th { font-weight: 600; color: #333; }
-    .badge { display: inline-block; padding: 0.15rem 0.45rem; border-radius: 4px; font-size: 0.72rem; font-weight: 600; text-transform: uppercase; }
-    .badge-planned { background: #eceff1; color: #546e7a; }
-    .badge-progress { background: #e3f2fd; color: #1565c0; }
-    .badge-done { background: #e8f5e9; color: #2e7d32; }
-    .badge-cancel { background: #ffebee; color: #c62828; }
-    .actions-cell form { display: inline; margin: 0; }
-    .actions-cell .btn-action { margin-right: 0.25rem; }
-</style>
+<nav class="log-bc" aria-label="Migas de pan">
+    <a href="{% url 'logbook:dashboard' %}">Panel</a>
+    <span class="sep">›</span>
+    <span aria-current="page">Bitácora</span>
+</nav>
 
-<div class="list-header">
+<div class="log-page-head">
     <h1>Historial de vuelos</h1>
-    <a class="btn-primary" href="{% url 'logbook:flight_create' %}">+ Nuevo vuelo</a>
+    <div class="log-toolbar">
+        <form class="log-search" method="get" action="{% url 'logbook:flight_list' %}" role="search">
+            <input type="search" name="q" value="{{ search_q }}" placeholder="Buscar vuelos…" aria-label="Buscar vuelos">
+            <button type="submit" aria-label="Buscar">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
+            </button>
+        </form>
+        <a class="log-btn-primary" href="{% url 'logbook:flight_create' %}">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            Nuevo vuelo
+        </a>
+    </div>
 </div>
 
-{% if flights %}
-<table class="flight-table">
-    <thead>
-        <tr>
-            <th>Fecha</th>
-            <th>Aeronave</th>
-            <th>Origen</th>
-            <th>Destino</th>
-            <th>Estado</th>
-            <th>Tiempo total</th>
-            <th>Acciones</th>
-        </tr>
-    </thead>
-    <tbody>
-        {% for f in flights %}
-        <tr>
-            <td><a href="{% url 'logbook:flight_detail' f.pk %}">{{ f.planned_date|date:"d M Y" }}</a></td>
-            <td><strong>{{ f.aircraft.registration }}</strong><br><small>{{ f.aircraft.manufacturer }} {{ f.aircraft.model }}</small></td>
-            <td>{{ f.departure_airport.icao_code }} <small>({{ f.departure_airport.city }})</small></td>
-            <td>{{ f.arrival_airport.icao_code }} <small>({{ f.arrival_airport.city }})</small></td>
-            <td>
-                {% if f.status == "PLANNED" %}<span class="badge badge-planned">{{ f.get_status_display }}</span>
-                {% elif f.status == "IN_PROGRESS" %}<span class="badge badge-progress">{{ f.get_status_display }}</span>
-                {% elif f.status == "COMPLETED" %}<span class="badge badge-done">{{ f.get_status_display }}</span>
-                {% else %}<span class="badge badge-cancel">{{ f.get_status_display }}</span>
-                {% endif %}
-            </td>
-            <td>{% if f.total_time %}{{ f.total_time }}{% else %}—{% endif %}</td>
-            <td class="actions-cell">
-                {% if f.status == "PLANNED" %}
-                    <form method="post" action="{% url 'logbook:flight_start' f.pk %}">
-                        {% csrf_token %}
-                        <button type="submit" class="btn-action btn-start">Iniciar vuelo</button>
-                    </form>
-                {% elif f.status == "IN_PROGRESS" %}
-                    <form method="post" action="{% url 'logbook:flight_finish' f.pk %}">
-                        {% csrf_token %}
-                        <button type="submit" class="btn-action btn-finish">Finalizar vuelo</button>
-                    </form>
-                {% else %}
-                    <span style="color:#999;">—</span>
-                {% endif %}
-            </td>
-        </tr>
-        {% endfor %}
-    </tbody>
-</table>
-{% else %}
-<p>No hay vuelos. <a href="{% url 'logbook:flight_create' %}">Crear vuelo previsto</a>.</p>
-{% endif %}
+<div class="log-stats">
+    <div class="log-stat">
+        <div class="log-stat-icon log-stat-icon--time" aria-hidden="true">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+        </div>
+        <div class="log-stat-body">
+            <span class="log-stat-label">Horas totales (motor)</span>
+            <strong>{{ total_hours|floatformat:1 }}</strong>
+            {% if hours_this_month > 0 %}
+            <span class="log-trend">+{{ hours_this_month|floatformat:1 }} h este mes</span>
+            {% else %}
+            <span class="log-stat-hint">Suma de vuelos completados</span>
+            {% endif %}
+        </div>
+    </div>
+    <div class="log-stat">
+        <div class="log-stat-icon log-stat-icon--land" aria-hidden="true">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17.8 19.2L16 11l3.5-3.5C21 6 21.5 4 21 3c-1-.5-3 0-4.5 1.5L13 8 4.8 6.2c-.5-.1-.9.1-1.1.5l-.3.5c-.2.5-.1 1 .3 1.3L9 12l-2 3H4l-1 1 3 2 2 3 1-1v-3l3-2 3.5 5.3c.3.4.8.5 1.3.3l.5-.2c.4-.3.6-.7.5-1.2z"/></svg>
+        </div>
+        <div class="log-stat-body">
+            <span class="log-stat-label">Aterrizajes</span>
+            <strong>{{ landings_90d }}</strong>
+            <span class="log-stat-hint">Vuelos completados en los últimos 90 días</span>
+        </div>
+    </div>
+    <div class="log-stat">
+        <div class="log-stat-icon log-stat-icon--cert" aria-hidden="true">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+        </div>
+        <div class="log-stat-body">
+            <span class="log-stat-label">Próxima revisión</span>
+            <strong>—</strong>
+            <span class="log-stat-warn">Certificaciones médicas · próximamente</span>
+        </div>
+    </div>
+</div>
+
+<div class="log-panel">
+    {% if flights %}
+    <div class="log-table-wrap">
+        <table class="log-table">
+            <thead>
+                <tr>
+                    <th>Fecha</th>
+                    <th>Aeronave</th>
+                    <th>Origen</th>
+                    <th>Destino</th>
+                    <th>Estado</th>
+                    <th>Tiempo total</th>
+                    <th>Acciones</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for f in flights %}
+                <tr>
+                    <td>
+                        <a class="log-date-link" href="{% url 'logbook:flight_detail' f.pk %}">{{ f.planned_date|date:"d M Y" }}</a>
+                        {% if f.imported_source == "SIMBRIEF" %}<span class="log-badge-simbrief" title="Importado desde OFP/SimBrief">SimBrief</span>{% endif %}
+                        {% if f.flight_number %}<span class="log-flight-no">{{ f.flight_number }}</span>{% endif %}
+                    </td>
+                    <td>
+                        <div class="log-ac">
+                            <span class="log-ac-icon" aria-hidden="true">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17.8 19.2L16 11l3.5-3.5C21 6 21.5 4 21 3c-1-.5-3 0-4.5 1.5L13 8 4.8 6.2c-.5-.1-.9.1-1.1.5l-.3.5c-.2.5-.1 1 .3 1.3L9 12l-2 3H4l-1 1 3 2 2 3 1-1v-3l3-2 3.5 5.3c.3.4.8.5 1.3.3l.5-.2c.4-.3.6-.7.5-1.2z"/></svg>
+                            </span>
+                            <div>
+                                <strong>{{ f.aircraft.registration }}</strong>
+                                <small>{{ f.aircraft.manufacturer }} {{ f.aircraft.model }}</small>
+                            </div>
+                        </div>
+                    </td>
+                    <td>{{ f.departure_airport.icao_code }} <small>({{ f.departure_airport.city }})</small></td>
+                    <td>{{ f.arrival_airport.icao_code }} <small>({{ f.arrival_airport.city }})</small></td>
+                    <td>
+                        {% if f.status == "PLANNED" %}<span class="log-badge log-badge--planned">{{ f.get_status_display }}</span>
+                        {% elif f.status == "IN_PROGRESS" %}<span class="log-badge log-badge--progress">{{ f.get_status_display }}</span>
+                        {% elif f.status == "COMPLETED" %}<span class="log-badge log-badge--done">{{ f.get_status_display }}</span>
+                        {% else %}<span class="log-badge log-badge--cancel">{{ f.get_status_display }}</span>
+                        {% endif %}
+                    </td>
+                    <td>{% if f.total_time %}{{ f.total_time }}{% else %}—{% endif %}</td>
+                    <td class="log-actions">
+                        {% if f.status == "PLANNED" %}
+                        <form method="post" action="{% url 'logbook:flight_start' f.pk %}">
+                            {% csrf_token %}
+                            <button type="submit" class="log-btn-action log-btn-action--start">Iniciar vuelo</button>
+                        </form>
+                        {% elif f.status == "IN_PROGRESS" %}
+                        <form method="post" action="{% url 'logbook:flight_finish' f.pk %}">
+                            {% csrf_token %}
+                            <button type="submit" class="log-btn-action log-btn-action--finish">Finalizar vuelo</button>
+                        </form>
+                        {% else %}
+                        <span class="log-actions-muted">—</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    <div class="log-footer">
+        <span>
+            Mostrando
+            {% if page_obj.paginator.count %}
+            {{ page_obj.start_index }}–{{ page_obj.end_index }} de {{ page_obj.paginator.count }} vuelo{{ page_obj.paginator.count|pluralize:"s" }}
+            {% else %}
+            0 vuelos
+            {% endif %}
+            {% if search_q %} · filtro activo{% endif %}
+        </span>
+        {% if page_obj.paginator.num_pages > 1 %}
+        <nav class="log-pager" aria-label="Paginación">
+            {% if page_obj.has_previous %}
+            <a href="?page=1{% if search_q %}&q={{ search_q|urlencode }}{% endif %}" aria-label="Primera página">«</a>
+            <a href="?page={{ page_obj.previous_page_number }}{% if search_q %}&q={{ search_q|urlencode }}{% endif %}" aria-label="Página anterior">‹</a>
+            {% else %}
+            <span class="is-disabled" aria-hidden="true">«</span>
+            <span class="is-disabled" aria-hidden="true">‹</span>
+            {% endif %}
+            <span style="padding:0 0.35rem;font-weight:600;color:var(--fl-text);">{{ page_obj.number }} / {{ page_obj.paginator.num_pages }}</span>
+            {% if page_obj.has_next %}
+            <a href="?page={{ page_obj.next_page_number }}{% if search_q %}&q={{ search_q|urlencode }}{% endif %}" aria-label="Página siguiente">›</a>
+            <a href="?page={{ page_obj.paginator.num_pages }}{% if search_q %}&q={{ search_q|urlencode }}{% endif %}" aria-label="Última página">»</a>
+            {% else %}
+            <span class="is-disabled" aria-hidden="true">›</span>
+            <span class="is-disabled" aria-hidden="true">»</span>
+            {% endif %}
+        </nav>
+        {% endif %}
+    </div>
+    {% else %}
+    <div class="log-empty">
+        {% if search_q %}
+        No hay vuelos que coincidan con «{{ search_q }}». <a href="{% url 'logbook:flight_list' %}">Quitar filtro</a>
+        {% else %}
+        No hay vuelos. <a href="{% url 'logbook:flight_create' %}">Crear vuelo previsto</a>.
+        {% endif %}
+    </div>
+    {% endif %}
+</div>
 {% endblock %}

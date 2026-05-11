@@ -4,28 +4,314 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>{% block title %}Flightlog{% endblock %}</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        /* Alineado con users/auth_base.html (misma familia y tonos navy) */
+        :root {
+            --fl-navy: #142642;
+            --fl-navy-hover: #1a3254;
+            --fl-navy-soft: rgba(20, 38, 66, 0.08);
+            --fl-text: #1f2937;
+            --fl-muted: #6b7280;
+            --fl-border: #e5e7eb;
+            --fl-bg: #f3f4f6;
+            --fl-surface: #ffffff;
+            --fl-link: #2563eb;
+            --fl-link-hover: #1d4ed8;
+            --fl-shadow: 0 4px 6px -1px rgba(15, 23, 42, 0.06), 0 12px 24px -8px rgba(15, 23, 42, 0.08);
+            --fl-radius: 14px;
+            --fl-sidebar-w: 260px;
+        }
+        *, *::before, *::after { box-sizing: border-box; }
+        body.app-body {
+            margin: 0;
+            min-height: 100vh;
+            font-family: "Inter", system-ui, -apple-system, sans-serif;
+            font-size: 15px;
+            color: var(--fl-text);
+            background: var(--fl-bg);
+            line-height: 1.45;
+        }
+        a { color: var(--fl-link); }
+        a:hover { color: var(--fl-link-hover); }
+
+        .app-shell {
+            display: flex;
+            min-height: 100vh;
+        }
+
+        .app-sidebar {
+            width: var(--fl-sidebar-w);
+            flex-shrink: 0;
+            background: var(--fl-surface);
+            border-right: 1px solid var(--fl-border);
+            display: flex;
+            flex-direction: column;
+            padding: 1.25rem 0;
+        }
+        .app-sidebar-brand {
+            display: flex;
+            align-items: center;
+            gap: 0.55rem;
+            padding: 0 1.25rem 1.25rem;
+            text-decoration: none;
+            color: var(--fl-navy);
+            font-weight: 700;
+            font-size: 1.05rem;
+            letter-spacing: -0.02em;
+        }
+        .app-sidebar-brand svg { flex-shrink: 0; }
+        .app-sidebar-user {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            padding: 0 1.25rem 1.25rem;
+            margin: 0 0.75rem 1rem;
+            border-bottom: 1px solid var(--fl-border);
+        }
+        .app-avatar {
+            width: 42px;
+            height: 42px;
+            border-radius: 50%;
+            background: var(--fl-navy-soft);
+            color: var(--fl-navy);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 0.9rem;
+        }
+        .app-sidebar-user-text strong {
+            display: block;
+            font-size: 0.9rem;
+            font-weight: 600;
+            color: var(--fl-text);
+        }
+        .app-sidebar-user-text span {
+            font-size: 0.75rem;
+            color: var(--fl-muted);
+        }
+        .app-nav {
+            display: flex;
+            flex-direction: column;
+            gap: 0.2rem;
+            padding: 0 0.65rem;
+            flex: 1;
+        }
+        .app-nav a {
+            display: flex;
+            align-items: center;
+            gap: 0.65rem;
+            padding: 0.65rem 0.75rem;
+            border-radius: 10px;
+            color: var(--fl-text);
+            text-decoration: none;
+            font-size: 0.9rem;
+            font-weight: 500;
+            transition: background 0.12s, color 0.12s;
+        }
+        .app-nav a svg { flex-shrink: 0; opacity: 0.75; }
+        .app-nav a:hover { background: var(--fl-bg); color: var(--fl-navy); }
+        .app-nav a.is-active {
+            background: var(--fl-navy-soft);
+            color: var(--fl-navy);
+            font-weight: 600;
+        }
+        .app-nav a.is-active svg { opacity: 1; color: var(--fl-navy); }
+        .app-sidebar-foot {
+            padding: 0.75rem 1rem 0;
+            margin-top: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 0.15rem;
+        }
+        .app-sidebar-foot a, .app-sidebar-foot button {
+            display: block;
+            width: 100%;
+            text-align: left;
+            padding: 0.5rem 0.75rem;
+            border: none;
+            background: none;
+            font: inherit;
+            font-size: 0.875rem;
+            color: var(--fl-muted);
+            text-decoration: none;
+            cursor: pointer;
+            border-radius: 8px;
+        }
+        .app-sidebar-foot a:hover, .app-sidebar-foot button:hover {
+            background: var(--fl-bg);
+            color: var(--fl-text);
+        }
+
+        .app-main-wrap {
+            flex: 1;
+            min-width: 0;
+            display: flex;
+            flex-direction: column;
+        }
+        .app-topbar {
+            background: var(--fl-surface);
+            border-bottom: 1px solid var(--fl-border);
+            padding: 0 1.5rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 1rem;
+            min-height: 56px;
+        }
+        .app-tabs {
+            display: flex;
+            align-items: stretch;
+            gap: 0.25rem;
+        }
+        .app-tabs a {
+            padding: 0.65rem 0.85rem;
+            font-size: 0.875rem;
+            font-weight: 500;
+            color: var(--fl-muted);
+            text-decoration: none;
+            border-bottom: 2px solid transparent;
+            margin-bottom: -1px;
+        }
+        .app-tabs a:hover { color: var(--fl-text); }
+        .app-tabs a.is-active {
+            color: var(--fl-navy);
+            font-weight: 600;
+            border-bottom-color: var(--fl-link);
+        }
+        .app-topbar-tools {
+            display: flex;
+            align-items: center;
+            gap: 0.35rem;
+        }
+        .app-icon-btn {
+            width: 40px;
+            height: 40px;
+            border: none;
+            background: transparent;
+            border-radius: 10px;
+            color: var(--fl-muted);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .app-icon-btn:hover { background: var(--fl-bg); color: var(--fl-text); }
+
+        .app-main {
+            flex: 1;
+            padding: 1.5rem 1.75rem 2rem;
+        }
+
+        @media (max-width: 900px) {
+            .app-shell { flex-direction: column; }
+            .app-sidebar {
+                width: 100%;
+                border-right: none;
+                border-bottom: 1px solid var(--fl-border);
+                flex-direction: row;
+                flex-wrap: wrap;
+                align-items: center;
+                padding: 0.75rem 1rem;
+            }
+            .app-sidebar-brand { padding: 0.5rem 0.75rem 0.5rem 0; }
+            .app-sidebar-user {
+                margin: 0;
+                border: none;
+                padding: 0.5rem;
+                flex: 1;
+                min-width: 200px;
+            }
+            .app-nav { flex-direction: row; flex-wrap: wrap; flex: none; width: 100%; }
+            .app-sidebar-foot { flex-direction: row; width: 100%; margin-top: 0.5rem; }
+            .app-topbar { flex-wrap: wrap; padding: 0.5rem 1rem; }
+            .app-main { padding: 1rem; }
+        }
+    </style>
+    {% block extra_head %}{% endblock %}
 </head>
-<body>
-    <header>
-        <p>
-            {% if user.is_authenticated %}
-            <a href="{% url 'logbook:dashboard' %}">Panel</a> ·
-            <a href="{% url 'logbook:flight_list' %}">Vuelos</a> ·
-            <a href="{% url 'logbook:flight_create' %}">Nuevo vuelo</a>
-            · {{ user.username }}
+<body class="app-body">
+    {% if user.is_authenticated %}
+    <div class="app-shell">
+        <aside class="app-sidebar">
+            <a class="app-sidebar-brand" href="{% url 'logbook:dashboard' %}">
+                <svg width="28" height="28" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                    <path d="M18 4L28 12v6l-4 2v8l-3-2v-6l-3 1.5V26l-3 2v-4.5L12 22v6l-3 2v-8L5 18v-6L18 4z" fill="currentColor"/>
+                    <path d="M18 8L11 13.5h14L18 8z" fill="#fff" fill-opacity="0.25"/>
+                </svg>
+                Flightlog
+            </a>
+            <div class="app-sidebar-user">
+                <div class="app-avatar" aria-hidden="true">{{ user.username|slice:":1"|upper }}</div>
+                <div class="app-sidebar-user-text">
+                    <strong>{% firstof user.get_full_name user.username %}</strong>
+                    <span>Piloto</span>
+                </div>
+            </div>
+            <nav class="app-nav" aria-label="Principal">
+                <a class="{% if request.resolver_match.url_name == 'dashboard' %}is-active{% endif %}" href="{% url 'logbook:dashboard' %}">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+                    Panel
+                </a>
+                <a class="{% if request.resolver_match.url_name == 'flight_list' or request.resolver_match.url_name == 'flight_detail' %}is-active{% endif %}" href="{% url 'logbook:flight_list' %}">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 016.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z"/></svg>
+                    Bitácora
+                </a>
+                <a class="{% if request.resolver_match.url_name == 'flight_create' %}is-active{% endif %}" href="{% url 'logbook:flight_create' %}">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
+                    Nuevo vuelo
+                </a>
+                <a class="{% if request.resolver_match.url_name == 'flight_import' %}is-active{% endif %}" href="{% url 'logbook:flight_import' %}">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
+                    Importar plan
+                </a>
+            </nav>
+            <div class="app-sidebar-foot">
+                <a href="/admin/" target="_blank" rel="noopener">Centro de ayuda · Admin</a>
+                <form method="post" action="{% url 'users:logout' %}" style="margin:0;">
+                    {% csrf_token %}
+                    <button type="submit">Cerrar sesión</button>
+                </form>
+            </div>
+        </aside>
+        <div class="app-main-wrap">
+            <header class="app-topbar">
+                <nav class="app-tabs" aria-label="Secciones">
+                    <a class="{% if request.resolver_match.url_name == 'dashboard' %}is-active{% endif %}" href="{% url 'logbook:dashboard' %}">Panel</a>
+                    <a class="{% if request.resolver_match.url_name == 'flight_list' or request.resolver_match.url_name == 'flight_detail' %}is-active{% endif %}" href="{% url 'logbook:flight_list' %}">Bitácora</a>
+                    <a class="{% if request.resolver_match.url_name == 'flight_create' %}is-active{% endif %}" href="{% url 'logbook:flight_create' %}">Nuevo vuelo</a>
+                    <a class="{% if request.resolver_match.url_name == 'flight_import' %}is-active{% endif %}" href="{% url 'logbook:flight_import' %}">Importar plan</a>
+                </nav>
+                <div class="app-topbar-tools">
+                    <button type="button" class="app-icon-btn" title="Notificaciones (próximamente)" aria-label="Notificaciones">
+                        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg>
+                    </button>
+                    <button type="button" class="app-icon-btn" title="Ajustes (próximamente)" aria-label="Ajustes">
+                        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
+                    </button>
+                </div>
+            </header>
+            <main class="app-main">
+{% else %}
+    <header style="padding:1rem 1.5rem;background:#fff;border-bottom:1px solid var(--fl-border);">
+        <p style="margin:0;font-size:0.9rem;">
+            <a href="{% url 'users:login' %}">Iniciar sesión</a>
             ·
-            <form method="post" action="{% url 'users:logout' %}" style="display:inline;">
-                {% csrf_token %}
-                <button type="submit">Salir</button>
-            </form>
-            {% else %}
-            <a href="{% url 'users:login' %}">Iniciar sesión</a> ·
             <a href="{% url 'users:register' %}">Registro</a>
-            {% endif %}
         </p>
     </header>
-    <main>
-        {% block content %}{% endblock %}
+    <main style="padding:1.5rem;">
+{% endif %}
+                {% block content %}{% endblock %}
+{% if user.is_authenticated %}
+            </main>
+        </div>
+    </div>
+{% else %}
     </main>
+{% endif %}
 </body>
 </html>

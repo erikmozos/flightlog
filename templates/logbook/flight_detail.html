@@ -1,178 +1,841 @@
 {% extends "base.html" %}
 
-{% block title %}Vuelo {{ flight.planned_date }} — Flightlog{% endblock %}
+{% block title %}Vuelo #{{ flight.pk }} · Flightlog{% endblock %}
+
+{% block extra_head %}
+{% if route_map_json %}
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
+{% endif %}
+<style>
+    .fd-bc {
+        font-size: 0.7rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        color: var(--fl-muted);
+        margin-bottom: 0.5rem;
+    }
+    .fd-bc a { color: var(--fl-muted); text-decoration: none; }
+    .fd-bc a:hover { color: var(--fl-navy); }
+    .fd-bc .fd-bc-sep { margin: 0 0.4rem; opacity: 0.5; }
+
+    .fd-page-head {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 1rem;
+        margin-bottom: 1.5rem;
+    }
+    .fd-page-head h1 {
+        margin: 0 0 0.35rem;
+        font-size: 1.65rem;
+        font-weight: 700;
+        color: var(--fl-navy);
+        letter-spacing: -0.02em;
+    }
+    .fd-page-head .fd-sub {
+        margin: 0;
+        font-size: 0.95rem;
+        color: var(--fl-muted);
+        max-width: 36rem;
+        line-height: 1.45;
+    }
+    .fd-head-actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+    }
+    .fd-btn-outline {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.4rem;
+        padding: 0.55rem 0.95rem;
+        border-radius: 12px;
+        border: 1px solid var(--fl-border);
+        background: var(--fl-surface);
+        color: var(--fl-text) !important;
+        font: inherit;
+        font-weight: 600;
+        font-size: 0.85rem;
+        text-decoration: none;
+        cursor: pointer;
+    }
+    .fd-btn-outline:hover { background: var(--fl-bg); }
+
+    .fd-layout {
+        display: grid;
+        grid-template-columns: 1fr 300px;
+        gap: 1.25rem;
+        align-items: start;
+    }
+    @media (max-width: 1000px) {
+        .fd-layout { grid-template-columns: 1fr; }
+    }
+
+    .fd-card {
+        background: var(--fl-surface);
+        border-radius: var(--fl-radius);
+        border: 1px solid var(--fl-border);
+        box-shadow: var(--fl-shadow);
+        margin-bottom: 1.25rem;
+        overflow: hidden;
+    }
+    .fd-card--done { border-color: #bbf7d0; background: #f0fdf4; }
+    .fd-card--cancel { opacity: 0.95; }
+    .fd-card-h {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 1rem;
+        flex-wrap: wrap;
+        padding: 1.1rem 1.25rem;
+        border-bottom: 1px solid var(--fl-border);
+    }
+    .fd-card-h h2 {
+        margin: 0;
+        font-size: 1.05rem;
+        font-weight: 600;
+        color: var(--fl-text);
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+    .fd-card-body { padding: 1.25rem; }
+
+    .fd-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.35rem;
+        padding: 0.25rem 0.65rem;
+        border-radius: 999px;
+        font-size: 0.68rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+    }
+    .fd-badge--planned { background: #dbeafe; color: #1e40af; }
+    .fd-badge--progress { background: #fef3c7; color: #b45309; }
+    .fd-badge--progress::before {
+        content: "";
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
+        background: #dc2626;
+    }
+    .fd-badge--done { background: #dcfce7; color: #166534; }
+    .fd-badge--cancel { background: #fee2e2; color: #b91c1c; }
+
+    .fd-kv-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 1.1rem 1.5rem;
+    }
+    @media (max-width: 600px) {
+        .fd-kv-grid { grid-template-columns: 1fr; }
+    }
+    .fd-kv .fd-kv-label {
+        font-size: 0.68rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        color: var(--fl-muted);
+        margin-bottom: 0.3rem;
+    }
+    .fd-kv .fd-kv-val {
+        font-size: 0.95rem;
+        font-weight: 600;
+        color: var(--fl-text);
+    }
+    .fd-kv .fd-kv-val--muted { font-style: italic; font-weight: 500; color: var(--fl-muted); }
+    .fd-kv .fd-kv-sub { display: block; font-size: 0.8rem; font-weight: 400; color: var(--fl-muted); margin-top: 0.2rem; }
+
+    .fd-obs-box {
+        margin-top: 1.25rem;
+        padding: 1rem 1.1rem;
+        background: var(--fl-bg);
+        border: 1px solid var(--fl-border);
+        border-radius: 12px;
+    }
+    .fd-obs-box .fd-kv-label { margin-bottom: 0.45rem; }
+    .fd-obs-box .fd-obs-text {
+        margin: 0;
+        font-size: 0.9rem;
+        font-style: italic;
+        color: var(--fl-text);
+        line-height: 1.5;
+    }
+
+    .fd-btn-start {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.5rem;
+        width: 100%;
+        margin-top: 1.35rem;
+        padding: 0.9rem 1rem;
+        border: none;
+        border-radius: 12px;
+        background: var(--fl-navy);
+        color: #fff !important;
+        font: inherit;
+        font-weight: 700;
+        font-size: 0.95rem;
+        cursor: pointer;
+        box-shadow: var(--fl-shadow);
+    }
+    .fd-btn-start:hover { background: var(--fl-navy-hover); }
+    .fd-hint { margin: 0.5rem 0 0; font-size: 0.8rem; color: var(--fl-muted); text-align: center; }
+
+    .fd-card-active {
+        border-color: var(--fl-navy);
+        background: var(--fl-navy);
+        color: #e2e8f0;
+    }
+    .fd-card-active .fd-card-h {
+        border-bottom-color: rgba(255,255,255,0.12);
+    }
+    .fd-card-active .fd-card-h h2 { color: #fff; }
+    .fd-active-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 1rem;
+        padding: 1.25rem;
+    }
+    @media (max-width: 700px) {
+        .fd-active-grid { grid-template-columns: 1fr; }
+    }
+    .fd-timer-box {
+        background: #fff;
+        border-radius: 12px;
+        padding: 1.1rem 1.15rem;
+        color: var(--fl-text);
+    }
+    .fd-timer-box .fd-kv-label { color: var(--fl-muted); }
+    .fd-timer-big {
+        font-size: 2rem;
+        font-weight: 700;
+        font-variant-numeric: tabular-nums;
+        letter-spacing: 0.02em;
+        color: var(--fl-navy);
+        margin-top: 0.25rem;
+    }
+    .fd-active-meta { font-size: 0.88rem; line-height: 1.55; }
+    .fd-active-meta strong { color: #fff; display: block; margin-bottom: 0.35rem; }
+    .fd-active-meta span { opacity: 0.88; }
+    .fd-btn-finish {
+        grid-column: 1 / -1;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.45rem;
+        margin-left: auto;
+        margin-top: 0.25rem;
+        padding: 0.85rem 1.35rem;
+        border: none;
+        border-radius: 12px;
+        background: #dc2626;
+        color: #fff !important;
+        font: inherit;
+        font-weight: 700;
+        font-size: 0.9rem;
+        cursor: pointer;
+    }
+    .fd-btn-finish:hover { background: #b91c1c; }
+
+    .fd-aside { display: flex; flex-direction: column; gap: 1rem; }
+    .fd-side-card {
+        background: var(--fl-surface);
+        border-radius: var(--fl-radius);
+        border: 1px solid var(--fl-border);
+        box-shadow: var(--fl-shadow);
+        padding: 1.1rem 1.15rem;
+    }
+    .fd-side-card h3 {
+        margin: 0 0 0.85rem;
+        font-size: 0.68rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        color: var(--fl-muted);
+    }
+    .fd-stat-mini {
+        display: flex;
+        align-items: flex-start;
+        gap: 0.65rem;
+        margin-bottom: 0.75rem;
+        font-size: 0.85rem;
+    }
+    .fd-stat-mini:last-child { margin-bottom: 0; }
+    .fd-stat-mini svg { flex-shrink: 0; color: var(--fl-navy); opacity: 0.8; margin-top: 0.1rem; }
+    .fd-stat-mini strong { display: block; color: var(--fl-text); }
+    .fd-stat-mini span { color: var(--fl-muted); font-size: 0.8rem; }
+    .fd-map-card {
+        border-radius: var(--fl-radius);
+        overflow: hidden;
+        border: 1px solid var(--fl-border);
+        background: linear-gradient(160deg, #334155 0%, #1e293b 40%, #0f172a 100%);
+        min-height: 130px;
+        position: relative;
+        padding: 1.15rem;
+        color: #fff;
+    }
+    .fd-map-card::after {
+        content: "";
+        position: absolute;
+        inset: 0;
+        background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='60' height='60' viewBox='0 0 24 24' fill='none' stroke='rgba(255,255,255,0.08)' stroke-width='0.5'%3E%3Cpath d='M2 12h20M12 2v20'/%3E%3C/svg%3E");
+        pointer-events: none;
+    }
+    .fd-map-card p { margin: 0; position: relative; z-index: 1; font-size: 0.65rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; opacity: 0.75; }
+    .fd-map-card strong { display: block; position: relative; z-index: 1; margin-top: 0.5rem; font-size: 0.9rem; line-height: 1.35; }
+    .fd-map-foot {
+        margin-top: 0.85rem;
+        position: relative;
+        z-index: 1;
+        font-size: 0.75rem;
+        opacity: 0.85;
+    }
+    .fd-map-foot a { color: #fff !important; font-weight: 600; }
+
+    .fd-doc-list { list-style: none; margin: 0; padding: 0; }
+    .fd-doc-list li {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 0.5rem;
+        padding: 0.55rem 0;
+        border-bottom: 1px solid var(--fl-border);
+        font-size: 0.82rem;
+    }
+    .fd-doc-list li:last-child { border-bottom: none; }
+    .fd-doc-list a {
+        color: var(--fl-text);
+        text-decoration: none;
+        font-weight: 500;
+        display: flex;
+        align-items: center;
+        gap: 0.35rem;
+    }
+    .fd-doc-list a:hover { color: var(--fl-link); }
+    .fd-doc-empty { margin: 0; font-size: 0.85rem; color: var(--fl-muted); }
+
+    .fd-charts-wrap {
+        margin-top: 2rem;
+        display: flex;
+        flex-direction: column;
+        gap: 1.75rem;
+    }
+    .fd-charts-wrap h2.fd-section-title {
+        margin: 0 0 0.25rem;
+        font-size: 1.1rem;
+        font-weight: 700;
+        color: var(--fl-navy);
+    }
+    .fd-charts-wrap > p { margin: 0 0 0.75rem; color: var(--fl-muted); font-size: 0.88rem; }
+
+    .fd-charts-wrap .charts-airport {
+        border: 1px solid var(--fl-border);
+        border-radius: var(--fl-radius);
+        padding: 1rem 1.1rem 1.15rem;
+        background: var(--fl-bg);
+        box-shadow: var(--fl-shadow);
+    }
+    .fd-charts-wrap .charts-airport--dep {
+        border-left: 4px solid var(--fl-link);
+    }
+    .fd-charts-wrap .charts-airport--arr {
+        border-left: 4px solid var(--fl-navy);
+    }
+    .fd-charts-wrap .charts-airport-head { margin-bottom: 0.75rem; }
+    .fd-charts-wrap .charts-airport-title {
+        margin: 0;
+        font-size: 1rem;
+        display: flex;
+        flex-wrap: wrap;
+        align-items: baseline;
+        gap: 0.35rem 0.75rem;
+    }
+    .fd-charts-wrap .charts-role {
+        font-weight: 700;
+        color: var(--fl-link);
+        text-transform: uppercase;
+        font-size: 0.7rem;
+        letter-spacing: 0.06em;
+    }
+    .fd-charts-wrap .charts-icao { font-weight: 700; color: var(--fl-text); }
+    .fd-charts-wrap .charts-name { color: var(--fl-muted); font-weight: 400; font-size: 0.88rem; }
+    .fd-charts-wrap .charts-airport-empty { background: var(--fl-surface); }
+    .fd-charts-wrap .chart-airport-body { display: flex; flex-direction: column; gap: 0.5rem; }
+    .fd-charts-wrap .chart-kind-tabs {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.4rem;
+        margin-bottom: 0.35rem;
+    }
+    .fd-charts-wrap .chart-kind-tab {
+        padding: 0.42rem 0.85rem;
+        border-radius: 999px;
+        border: 1px solid var(--fl-border);
+        background: var(--fl-surface);
+        font: inherit;
+        font-size: 0.76rem;
+        font-weight: 600;
+        cursor: pointer;
+        color: var(--fl-muted);
+        line-height: 1.2;
+    }
+    .fd-charts-wrap .chart-kind-tab:hover { background: var(--fl-bg); color: var(--fl-text); }
+    .fd-charts-wrap .chart-kind-tab.is-active {
+        background: var(--fl-navy);
+        color: #fff;
+        border-color: var(--fl-navy);
+    }
+    .fd-charts-wrap .chart-kind-tab:focus-visible {
+        outline: 2px solid var(--fl-link);
+        outline-offset: 2px;
+    }
+    .fd-charts-wrap .chart-chart-toolbar { margin-top: 0.15rem; }
+    .fd-charts-wrap .chart-chart-toolbar .chart-viewer-label {
+        display: block;
+        font-size: 0.68rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        color: var(--fl-muted);
+        margin-bottom: 0.35rem;
+    }
+    .fd-charts-wrap .chart-chart-toolbar-inner {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: stretch;
+        gap: 0.5rem;
+    }
+    .fd-charts-wrap .chart-pick-panel { flex: 1 1 12rem; min-width: 0; }
+    .fd-charts-wrap .chart-pick-panel[hidden] { display: none !important; }
+    .fd-charts-wrap .chart-viewer-actions {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 0.45rem;
+        flex: 0 0 auto;
+    }
+    .fd-charts-wrap .chart-pick-panel .chart-viewer-select {
+        width: 100%;
+        box-sizing: border-box;
+    }
+    .fd-charts-wrap .chart-viewer-select {
+        flex: 1;
+        min-width: 14rem;
+        max-width: 100%;
+        padding: 0.55rem 0.7rem;
+        border-radius: 10px;
+        border: 1px solid var(--fl-border);
+        background: var(--fl-bg);
+        font: inherit;
+        font-size: 0.88rem;
+        color: var(--fl-text);
+    }
+    .fd-charts-wrap .chart-viewer-desc { margin: 0 0 0.5rem; font-size: 0.8rem; color: var(--fl-muted); line-height: 1.45; }
+    .fd-charts-wrap .chart-viewer-tip { margin: 0 0 0.5rem; font-size: 0.75rem; color: var(--fl-muted); line-height: 1.4; }
+    .fd-charts-wrap .chart-viewer-frame-wrap {
+        position: relative;
+        border: 1px solid var(--fl-border);
+        border-radius: 12px;
+        overflow: hidden;
+        background: #e2e8f0;
+        min-height: min(72vh, 900px);
+        margin-top: 0.35rem;
+    }
+    .fd-charts-wrap .chart-viewer-iframe {
+        display: block;
+        width: 100%;
+        height: min(72vh, 900px);
+        border: none;
+        background: #fff;
+    }
+    .fd-charts-wrap .chart-viewer-iframe[hidden] { display: none !important; }
+    .fd-charts-wrap .chart-viewer-empty {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 12rem;
+        padding: 1rem;
+        color: var(--fl-muted);
+        font-size: 0.88rem;
+        text-align: center;
+    }
+    /* Sin esto, `display:flex` gana al estilo por defecto de [hidden] y el mensaje no desaparece. */
+    .fd-charts-wrap .chart-viewer-empty[hidden] { display: none !important; }
+    .fd-charts-wrap .chart-viewer-external-fallback {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        min-height: min(72vh, 900px);
+        padding: 1.25rem;
+        text-align: center;
+        font-size: 0.9rem;
+        color: var(--fl-text);
+        line-height: 1.5;
+        background: var(--fl-surface);
+    }
+    .fd-charts-wrap .chart-viewer-external-fallback[hidden] { display: none !important; }
+    .fd-back { margin-top: 1.75rem; font-size: 0.9rem; }
+
+    .fd-simbrief-badge {
+        display: inline-flex;
+        align-items: center;
+        padding: 0.18rem 0.5rem;
+        border-radius: 6px;
+        font-size: 0.62rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        background: #fef3c7;
+        color: #92400e;
+        border: 1px solid #fcd34d;
+    }
+    .fd-flight-no {
+        margin-left: 0.35rem;
+        font-size: 0.72rem;
+        font-weight: 600;
+        color: var(--fl-muted);
+    }
+    .fd-map-leaflet-host {
+        height: 240px;
+        border-radius: 12px;
+        overflow: hidden;
+        border: 1px solid var(--fl-border);
+        background: #e2e8f0;
+        z-index: 0;
+    }
+
+    @media print {
+        .fd-aside, .fd-head-actions, .fd-btn-start, .fd-btn-finish, .fd-back { display: none !important; }
+        .fd-layout { grid-template-columns: 1fr; }
+    }
+</style>
+{% endblock %}
 
 {% block content %}
-<style>
-    .fd-header { display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: 1rem; margin-bottom: 1.25rem; }
-    .fd-header h1 { margin: 0 0 0.35rem 0; font-size: 1.4rem; }
-    .fd-header .subtitle { margin: 0; color: #555; font-size: 0.95rem; }
-    .badge { display: inline-block; padding: 0.2rem 0.55rem; border-radius: 999px; font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.02em; }
-    .badge-planned { background: #eceff1; color: #455a64; }
-    .badge-progress { background: #e3f2fd; color: #0d47a1; }
-    .badge-done { background: #e8f5e9; color: #1b5e20; }
-    .badge-cancel { background: #ffebee; color: #b71c1c; }
-    .fd-card { border: 1px solid #e0e0e0; border-radius: 10px; padding: 1.25rem 1.35rem; background: #fff; margin-bottom: 1.5rem; box-shadow: 0 1px 3px rgba(0,0,0,0.06); }
-    .fd-card-done { border-color: #c8e6c9; background: #fafcfa; }
-    .fd-card-header { display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem; margin-bottom: 1.1rem; flex-wrap: wrap; }
-    .fd-card-header h2 { margin: 0; font-size: 1.05rem; color: #333; }
-    .fd-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem 1.5rem; }
-    .fd-field .fd-label { font-size: 0.75rem; font-weight: 600; color: #666; text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 0.25rem; }
-    .fd-field .fd-value { font-size: 1rem; color: #111; }
-    .fd-field .fd-value.pending { font-style: italic; color: #888; }
-    .fd-route { font-size: 1.15rem; font-weight: 600; }
-    .fd-route small { display: block; font-weight: 400; font-size: 0.85rem; color: #555; margin-top: 0.2rem; }
-    .fd-aircraft .reg { color: #0d47a1; font-weight: 600; }
-    .fd-duration-big { font-variant-numeric: tabular-nums; font-size: 1.75rem; font-weight: 700; color: #0d47a1; }
-    .fd-duration-row { margin-top: 0.5rem; }
-    .fd-card-active { background: #0d2439; color: #e8eaf0; border-color: #0d2439; }
-    .fd-card-active .fd-card-header h2 { color: #e8eaf0; }
-    .fd-card-active .fd-label { color: #b0bec5; }
-    .fd-card-active .fd-value { color: #fff; }
-    .fd-card-active .fd-value.pending { color: #90a4ae; }
-    .fd-card-active .fd-duration-big { color: #ffab40; }
-    .fd-obs { margin-top: 1.25rem; padding-top: 1rem; border-top: 1px solid #eee; }
-    .fd-card-active .fd-obs { border-top-color: rgba(255,255,255,0.12); }
-    .fd-obs .fd-label { margin-bottom: 0.35rem; }
-    .btn-primary { padding: 0.55rem 1.2rem; background: #0d47a1; color: #fff; border: none; border-radius: 6px; font-weight: 600; cursor: pointer; font-size: 0.95rem; }
-    .btn-primary:hover { background: #1565c0; }
-    .btn-danger { padding: 0.55rem 1.2rem; background: #c62828; color: #fff; border: none; border-radius: 6px; font-weight: 600; cursor: pointer; font-size: 0.95rem; }
-    .btn-danger:hover { background: #b71c1c; }
-    .fd-actions { margin-top: 1.25rem; }
-    .fd-actions form { display: inline; margin-right: 0.5rem; }
-    .fd-actions small { display: block; margin-top: 0.5rem; color: #666; }
-    .fd-card-active .fd-actions small { color: #90a4ae; }
-    .charts-wrap { display: flex; flex-direction: column; gap: 1.75rem; margin: 1.5rem 0; }
-    .charts-airport { border: 1px solid #e0e0e0; border-radius: 10px; padding: 1rem 1.25rem; background: #fafafa; }
-    .charts-airport-empty { background: #fff; }
-    .charts-airport-title { margin: 0 0 1rem 0; font-size: 1.1rem; display: flex; flex-wrap: wrap; align-items: baseline; gap: 0.35rem 0.75rem; }
-    .charts-role { font-weight: 700; color: #0d47a1; text-transform: uppercase; font-size: 0.75rem; letter-spacing: 0.06em; }
-    .charts-icao { font-weight: 700; }
-    .charts-name { color: #555; font-weight: 400; font-size: 0.95rem; }
-    .charts-empty-msg { margin: 0; color: #757575; font-size: 0.95rem; }
-    .chart-type-block { margin-bottom: 1.25rem; }
-    .chart-type-block:last-child { margin-bottom: 0; }
-    .chart-type-heading { margin: 0 0 0.5rem 0; font-size: 0.85rem; font-weight: 700; color: #37474f; text-transform: uppercase; letter-spacing: 0.04em; border-bottom: 2px solid #0d47a1; padding-bottom: 0.25rem; display: inline-block; }
-    .chart-list { list-style: none; margin: 0; padding: 0; }
-    .chart-item { padding: 0.65rem 0; border-bottom: 1px solid #eee; }
-    .chart-item:last-child { border-bottom: none; }
-    .chart-item-title { font-weight: 600; }
-    .chart-item-desc { margin: 0.25rem 0 0.35rem; font-size: 0.88rem; color: #555; }
-    .chart-item-links { font-size: 0.88rem; }
-    .chart-link { color: #0d47a1; font-weight: 600; }
-    .chart-link-sep { color: #bdbdbd; margin: 0 0.35rem; }
-    .chart-link-muted { color: #9e9e9e; font-size: 0.82rem; }
-</style>
+<nav class="fd-bc" aria-label="Migas de pan">
+    <a href="{% url 'logbook:flight_list' %}">Bitácora</a>
+    <span class="fd-bc-sep">›</span>
+    <span aria-current="page">Detalle del vuelo</span>
+</nav>
 
-<div class="fd-header">
+<div class="fd-page-head">
     <div>
-        <h1>Detalle del vuelo</h1>
-        <p class="subtitle">{{ flight.planned_date|date:"d M Y" }} · {{ flight.departure_airport.icao_code }} → {{ flight.arrival_airport.icao_code }}</p>
-    </div>
-    <div>
-        {% if flight.status == "PLANNED" %}<span class="badge badge-planned">{{ flight.get_status_display }}</span>
-        {% elif flight.status == "IN_PROGRESS" %}<span class="badge badge-progress">{{ flight.get_status_display }}</span>
-        {% elif flight.status == "COMPLETED" %}<span class="badge badge-done">{{ flight.get_status_display }}</span>
-        {% else %}<span class="badge badge-cancel">{{ flight.get_status_display }}</span>
+        <h1>Vuelo #{{ flight.pk }}</h1>
+        <p class="fd-sub">Detalles técnicos y registro cronológico de la operación.</p>
+        {% if flight.imported_source == "SIMBRIEF" or flight.flight_number %}
+        <p style="margin:0.55rem 0 0;display:flex;align-items:center;gap:0.5rem;flex-wrap:wrap;">
+            {% if flight.imported_source == "SIMBRIEF" %}<span class="fd-simbrief-badge">SimBrief</span>{% endif %}
+            {% if flight.flight_number %}<span class="fd-flight-no" title="N.º de vuelo">{{ flight.flight_number }}</span>{% endif %}
+        </p>
         {% endif %}
+    </div>
+    <div class="fd-head-actions">
+        <button type="button" class="fd-btn-outline" onclick="window.print()">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+            Imprimir
+        </button>
+        <button type="button" class="fd-btn-outline" title="Próximamente" disabled style="opacity:0.6;cursor:not-allowed;">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
+            Exportar
+        </button>
     </div>
 </div>
 
-<div class="fd-card{% if flight.status == 'IN_PROGRESS' %} fd-card-active{% elif flight.status == 'COMPLETED' %} fd-card-done{% endif %}">
-    <div class="fd-card-header">
-        <h2>{% if flight.status == "COMPLETED" %}Resumen del vuelo{% else %}Información del vuelo{% endif %}</h2>
+<div class="fd-layout">
+    <div class="fd-main-col">
+        <article class="fd-card{% if flight.status == 'COMPLETED' %} fd-card--done{% elif flight.status == 'CANCELLED' %} fd-card--cancel{% endif %}">
+            <div class="fd-card-h">
+                <h2>
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+                    Información general
+                </h2>
+                {% if flight.status == "PLANNED" %}<span class="fd-badge fd-badge--planned">· {{ flight.get_status_display }}</span>
+                {% elif flight.status == "IN_PROGRESS" %}<span class="fd-badge fd-badge--progress">{{ flight.get_status_display }}</span>
+                {% elif flight.status == "COMPLETED" %}<span class="fd-badge fd-badge--done">· {{ flight.get_status_display }}</span>
+                {% else %}<span class="fd-badge fd-badge--cancel">· {{ flight.get_status_display }}</span>
+                {% endif %}
+            </div>
+            <div class="fd-card-body">
+                <div class="fd-kv-grid">
+                    <div class="fd-kv">
+                        <div class="fd-kv-label">Fecha</div>
+                        <div class="fd-kv-val">{{ flight.planned_date|date:"d M Y" }}</div>
+                    </div>
+                    <div class="fd-kv">
+                        <div class="fd-kv-label">Aeronave</div>
+                        <div class="fd-kv-val">
+                            {{ flight.aircraft.manufacturer }} {{ flight.aircraft.model }}
+                            <span class="fd-kv-sub">({{ flight.aircraft.registration }})</span>
+                        </div>
+                    </div>
+                    <div class="fd-kv">
+                        <div class="fd-kv-label">Ruta</div>
+                        <div class="fd-kv-val">
+                            {{ flight.departure_airport.icao_code }} → {{ flight.arrival_airport.icao_code }}
+                            <span class="fd-kv-sub">{{ flight.departure_airport.city }} — {{ flight.arrival_airport.city }}</span>
+                        </div>
+                    </div>
+                    <div class="fd-kv">
+                        <div class="fd-kv-label">Hora prevista (UTC)</div>
+                        <div class="fd-kv-val">
+                            {% if flight.planned_departure_time %}{{ flight.planned_departure_time|time:"H:i" }} UTC{% else %}<span class="fd-kv-val--muted">—</span>{% endif %}
+                        </div>
+                    </div>
+                    {% if flight.flight_number %}
+                    <div class="fd-kv">
+                        <div class="fd-kv-label">N.º de vuelo</div>
+                        <div class="fd-kv-val">{{ flight.flight_number }}</div>
+                    </div>
+                    {% endif %}
+                    {% if flight.alternate_airport %}
+                    <div class="fd-kv">
+                        <div class="fd-kv-label">Alternativo</div>
+                        <div class="fd-kv-val">
+                            {{ flight.alternate_airport.icao_code }}
+                            <span class="fd-kv-sub">{{ flight.alternate_airport.name }}</span>
+                        </div>
+                    </div>
+                    {% endif %}
+                    {% if flight.estimated_flight_time %}
+                    <div class="fd-kv">
+                        <div class="fd-kv-label">Duración prevista (OFP)</div>
+                        <div class="fd-kv-val">{{ flight.estimated_flight_time }}</div>
+                    </div>
+                    {% endif %}
+                    {% if flight.ofp_fuel_ramp_kg or flight.ofp_fuel_takeoff_kg or flight.ofp_fuel_landing_kg %}
+                    <div class="fd-kv" style="grid-column: 1 / -1;">
+                        <div class="fd-kv-label">Combustible previsto (OFP · kg)</div>
+                        <div class="fd-kv-val" style="font-weight:600;">
+                            {% if flight.ofp_fuel_ramp_kg %}Rampa {{ flight.ofp_fuel_ramp_kg }}{% else %}Rampa —{% endif %}
+                            <span class="fd-kv-sub" style="margin-left:0.35rem;">·</span>
+                            {% if flight.ofp_fuel_takeoff_kg %}Despegue {{ flight.ofp_fuel_takeoff_kg }}{% else %}Despegue —{% endif %}
+                            <span class="fd-kv-sub" style="margin-left:0.35rem;">·</span>
+                            {% if flight.ofp_fuel_landing_kg %}Llegada {{ flight.ofp_fuel_landing_kg }}{% else %}Llegada —{% endif %}
+                        </div>
+                    </div>
+                    {% endif %}
+                    {% if flight.fuel_on_board_start_kg is not None %}
+                    <div class="fd-kv">
+                        <div class="fd-kv-label">Comb. real al inicio</div>
+                        <div class="fd-kv-val">{{ flight.fuel_on_board_start_kg }} kg</div>
+                    </div>
+                    {% endif %}
+                    {% if flight.fuel_on_board_end_kg is not None %}
+                    <div class="fd-kv">
+                        <div class="fd-kv-label">Comb. real al finalizar</div>
+                        <div class="fd-kv-val">{{ flight.fuel_on_board_end_kg }} kg</div>
+                    </div>
+                    {% endif %}
+                    <div class="fd-kv">
+                        <div class="fd-kv-label">Hora real inicio</div>
+                        <div class="fd-kv-val{% if not flight.engine_start_time %} fd-kv-val--muted{% endif %}">
+                            {% if flight.engine_start_time %}{{ flight.engine_start_time|date:"H:i" }} UTC · {{ flight.engine_start_time|date:"d M Y" }}{% else %}Pendiente{% endif %}
+                        </div>
+                    </div>
+                    <div class="fd-kv">
+                        <div class="fd-kv-label">Hora real fin</div>
+                        <div class="fd-kv-val{% if not flight.engine_stop_time %} fd-kv-val--muted{% endif %}">
+                            {% if flight.engine_stop_time %}{{ flight.engine_stop_time|date:"H:i" }} UTC · {{ flight.engine_stop_time|date:"d M Y" }}{% else %}Pendiente{% endif %}
+                        </div>
+                    </div>
+                    <div class="fd-kv" style="grid-column: 1 / -1;">
+                        <div class="fd-kv-label">Duración (tiempo motor)</div>
+                        {% if flight.status == "COMPLETED" and flight.total_time %}
+                        <div class="fd-kv-val" style="font-size:1.35rem;">{{ flight.total_time }}</div>
+                        {% elif flight.status == "IN_PROGRESS" %}
+                        <div class="fd-kv-val fd-kv-val--muted">Ver cronómetro en «Vuelo activo»</div>
+                        {% else %}
+                        <div class="fd-kv-val fd-kv-val--muted">Se calcula al finalizar</div>
+                        {% endif %}
+                    </div>
+                </div>
+
+                {% if flight.remarks %}
+                <div class="fd-obs-box">
+                    <div class="fd-kv-label">Observaciones</div>
+                    <div class="fd-obs-text">{{ flight.remarks|linebreaksbr }}</div>
+                </div>
+                {% endif %}
+
+                {% if flight.status == "PLANNED" %}
+                <form method="post" action="{% url 'logbook:flight_start' flight.pk %}">
+                    {% csrf_token %}
+                    <div style="margin-top:1rem;">
+                        <label for="id_fuel_on_board_start_kg" style="display:block;font-size:0.68rem;font-weight:600;text-transform:uppercase;letter-spacing:0.06em;color:var(--fl-muted);margin-bottom:0.4rem;">Combustible a bordo al inicio (kg) · opcional</label>
+                        <input type="number" name="fuel_on_board_start_kg" id="id_fuel_on_board_start_kg" step="any" min="0" inputmode="decimal" placeholder="Ej. 4200" value="{% if flight.fuel_on_board_start_kg %}{{ flight.fuel_on_board_start_kg }}{% endif %}" style="width:100%;max-width:14rem;padding:0.6rem 0.75rem;border-radius:10px;border:1px solid var(--fl-border);background:var(--fl-bg);font:inherit;font-size:0.9rem;" />
+                    </div>
+                    <button type="submit" class="fd-btn-start">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+                        Iniciar vuelo
+                    </button>
+                </form>
+                <p class="fd-hint">Registra el encendido de motores a la hora actual.</p>
+                {% elif flight.status == "CANCELLED" %}
+                <p class="fd-hint" style="text-align:left;margin-top:1rem;">Este vuelo está cancelado. No hay acciones disponibles.</p>
+                {% endif %}
+            </div>
+        </article>
+
+        {% if flight.status == "IN_PROGRESS" %}
+        <article class="fd-card fd-card-active">
+            <div class="fd-card-h">
+                <h2>
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                    Vuelo activo · #{{ flight.pk }}
+                </h2>
+                <span class="fd-badge fd-badge--progress" style="background:rgba(255,255,255,0.15);color:#fff;border:1px solid rgba(255,255,255,0.25);">En curso</span>
+            </div>
+            <div class="fd-active-grid">
+                <div class="fd-timer-box">
+                    <div class="fd-kv-label">Duración actual</div>
+                    <div class="fd-timer-big" id="timer">{% if elapsed_in_progress_display %}{{ elapsed_in_progress_display }}{% else %}00:00:00{% endif %}</div>
+                    <div style="font-size:0.75rem;color:var(--fl-muted);margin-top:0.35rem;">Cronómetro en vivo (UTC)</div>
+                </div>
+                <div class="fd-active-meta">
+                    <strong>Datos de la operación</strong>
+                    <span>Hora de inicio: {% if flight.engine_start_time %}{{ flight.engine_start_time|date:"H:i" }} UTC{% else %}—{% endif %}<br>
+                    Aeronave: {{ flight.aircraft.manufacturer }} {{ flight.aircraft.model }} ({{ flight.aircraft.registration }})<br>
+                    Ruta: {{ flight.departure_airport.icao_code }} → {{ flight.arrival_airport.icao_code }}</span>
+                </div>
+                <form method="post" action="{% url 'logbook:flight_finish' flight.pk %}" style="grid-column:1/-1;text-align:right;">
+                    {% csrf_token %}
+                    <div style="text-align:left;margin-bottom:0.85rem;">
+                        <label for="id_fuel_on_board_end_kg" style="display:block;font-size:0.68rem;font-weight:600;text-transform:uppercase;letter-spacing:0.06em;color:rgba(255,255,255,0.65);margin-bottom:0.4rem;">Combustible a bordo al aterrizar (kg) · opcional</label>
+                        <input type="number" name="fuel_on_board_end_kg" id="id_fuel_on_board_end_kg" step="any" min="0" inputmode="decimal" placeholder="Ej. 1800" value="{% if flight.fuel_on_board_end_kg %}{{ flight.fuel_on_board_end_kg }}{% endif %}" style="width:100%;max-width:14rem;padding:0.6rem 0.75rem;border-radius:10px;border:1px solid rgba(255,255,255,0.25);background:rgba(255,255,255,0.95);font:inherit;font-size:0.9rem;color:var(--fl-text);" />
+                    </div>
+                    <button type="submit" class="fd-btn-finish">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="6" width="12" height="12" rx="1"/></svg>
+                        Finalizar vuelo
+                    </button>
+                </form>
+                <p class="fd-hint" style="grid-column:1/-1;color:rgba(255,255,255,0.65);">Registra el apagado de motores, calcula la duración y marca el vuelo como completado.</p>
+            </div>
+        </article>
+        {% endif %}
+
+        <div class="fd-charts-wrap">
+            <h2 class="fd-section-title">Cartas aeronáuticas</h2>
+            <p>Salida arriba, llegada abajo. Elige el <strong>tipo</strong> de carta (pestañas) y después la <strong>carta</strong> concreta; el PDF usa el espacio central.</p>
+            {% include "logbook/_charts_airport_block.html" with airport=flight.departure_airport charts_by_type=departure_charts_by_type role_label="Salida" %}
+            {% include "logbook/_charts_airport_block.html" with airport=flight.arrival_airport charts_by_type=arrival_charts_by_type role_label="Llegada" %}
+        </div>
+
+        <p class="fd-back"><a href="{% url 'logbook:flight_list' %}">← Volver a la bitácora</a></p>
     </div>
 
-    <div class="fd-grid">
-        <div class="fd-field">
-            <div class="fd-label">Estado</div>
-            <div class="fd-value">{{ flight.get_status_display }}</div>
-        </div>
-        <div class="fd-field">
-            <div class="fd-label">Fecha</div>
-            <div class="fd-value">{{ flight.planned_date|date:"d M Y" }}</div>
-        </div>
-        <div class="fd-field fd-aircraft">
-            <div class="fd-label">Aeronave</div>
-            <div class="fd-value">
-                {{ flight.aircraft.manufacturer }} {{ flight.aircraft.model }}
-                <span class="reg">({{ flight.aircraft.registration }})</span>
+    <aside class="fd-aside" aria-label="Información complementaria">
+        <div class="fd-side-card">
+            <h3>Resumen último vuelo</h3>
+            {% if last_completed %}
+            <div class="fd-stat-mini">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                <div>
+                    <strong>{% if last_completed.total_time %}{{ last_completed.total_time }}{% else %}—{% endif %}</strong>
+                    <span>Duración total · <a href="{% url 'logbook:flight_detail' last_completed.pk %}">#{{ last_completed.pk }}</a></span>
+                </div>
             </div>
-        </div>
-        <div class="fd-field">
-            <div class="fd-label">Ruta</div>
-            <div class="fd-value fd-route">
-                {{ flight.departure_airport.icao_code }} → {{ flight.arrival_airport.icao_code }}
-                <small>{{ flight.departure_airport.name }} — {{ flight.arrival_airport.name }}</small>
-                <small>{{ flight.departure_airport.city }} → {{ flight.arrival_airport.city }}</small>
+            <div class="fd-stat-mini">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2v8h-2V4H8l-2 6v10h12V8l-4-6h-2zm-2 16H8v-2h4v2z"/></svg>
+                <div>
+                    <strong>{% if last_completed.fuel_on_board_start_kg is not None %}{{ last_completed.fuel_on_board_start_kg }}{% else %}—{% endif %} → {% if last_completed.fuel_on_board_end_kg is not None %}{{ last_completed.fuel_on_board_end_kg }}{% else %}—{% endif %}</strong>
+                    <span>Combustible inicio → fin (kg)</span>
+                </div>
             </div>
-        </div>
-        <div class="fd-field">
-            <div class="fd-label">Hora prevista (salida)</div>
-            <div class="fd-value">{% if flight.planned_departure_time %}{{ flight.planned_departure_time }}{% else %}—{% endif %}</div>
-        </div>
-        <div class="fd-field">
-            <div class="fd-label">Hora real — inicio (motores)</div>
-            <div class="fd-value{% if not flight.engine_start_time %} pending{% endif %}">
-                {% if flight.engine_start_time %}{{ flight.engine_start_time }}{% else %}Pendiente{% endif %}
+            <div class="fd-stat-mini">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>
+                <div>
+                    <strong>—</strong>
+                    <span>Distancia (no registrada)</span>
+                </div>
             </div>
-        </div>
-        <div class="fd-field">
-            <div class="fd-label">Hora real — fin (motores)</div>
-            <div class="fd-value{% if not flight.engine_stop_time %} pending{% endif %}">
-                {% if flight.engine_stop_time %}{{ flight.engine_stop_time }}{% else %}Pendiente{% endif %}
-            </div>
-        </div>
-        <div class="fd-field fd-duration-row">
-            <div class="fd-label">Duración (tiempo de motor)</div>
-            {% if flight.status == "COMPLETED" and flight.total_time %}
-                <div class="fd-value fd-duration-big">{{ flight.total_time }}</div>
-            {% elif flight.status == "IN_PROGRESS" and flight.engine_start_time %}
-                <div class="fd-value fd-duration-big" id="timer">{% if elapsed_in_progress_display %}{{ elapsed_in_progress_display }}{% else %}00:00:00{% endif %}</div>
-                <div class="fd-value pending" style="font-size:0.85rem;margin-top:0.25rem;">Cronómetro en vivo</div>
             {% else %}
-                <div class="fd-value pending">{% if flight.status == "PLANNED" %}Se calcula al finalizar el vuelo{% else %}—{% endif %}</div>
+            <p class="fd-doc-empty">Aún no hay otro vuelo completado en tu historial.</p>
             {% endif %}
         </div>
-    </div>
 
-    {% if flight.remarks %}
-    <div class="fd-obs">
-        <div class="fd-label">Observaciones</div>
-        <div class="fd-value">{{ flight.remarks|linebreaks }}</div>
-    </div>
-    {% endif %}
-
-    {% if flight.status == "PLANNED" or flight.status == "IN_PROGRESS" or flight.status == "CANCELLED" %}
-    <div class="fd-actions">
-        {% if flight.status == "PLANNED" %}
-            <form method="post" action="{% url 'logbook:flight_start' flight.pk %}">
-                {% csrf_token %}
-                <button type="submit" class="btn-primary">Iniciar vuelo</button>
-            </form>
-            <small>Registra el encendido de motores a la hora actual.</small>
-        {% elif flight.status == "IN_PROGRESS" %}
-            <form method="post" action="{% url 'logbook:flight_finish' flight.pk %}">
-                {% csrf_token %}
-                <button type="submit" class="btn-danger">Finalizar vuelo</button>
-            </form>
-            <small>Registra el apagado de motores, calcula la duración y marca el vuelo como completado.</small>
-        {% elif flight.status == "CANCELLED" %}
-            <p class="fd-value" style="margin:0;">Este vuelo está cancelado. No hay acciones disponibles.</p>
+        {% if route_map_json %}
+        <div class="fd-side-card">
+            <h3>Vista de ruta</h3>
+            {% if flight.route %}
+            <p style="margin:0 0 0.85rem;font-size:0.8rem;line-height:1.5;color:var(--fl-text);word-break:break-word;">{{ flight.route }}</p>
+            {% endif %}
+            <div id="fd-route-map" class="fd-map-leaflet-host" aria-label="Mapa de salida, llegada y línea directa"></div>
+            <p style="margin:0.55rem 0 0;font-size:0.72rem;color:var(--fl-muted);line-height:1.4;">
+                {{ flight.departure_airport.icao_code }} → {{ flight.arrival_airport.icao_code }}
+                {% if flight.alternate_airport %} · ALT {{ flight.alternate_airport.icao_code }}{% endif %}
+                · línea ortodrómica aprox., no airway real · <a href="https://www.openstreetmap.org/search?query={{ flight.arrival_airport.city|urlencode }}" target="_blank" rel="noopener">OSM ciudad destino</a>
+            </p>
+        </div>
+        {% else %}
+        <div class="fd-map-card">
+            <p>Referencia de ruta</p>
+            <strong>
+                {% if flight.status == "IN_PROGRESS" %}
+                Salida: {{ flight.departure_airport.name }}
+                {% else %}
+                Llegada: {{ flight.arrival_airport.name }}
+                {% endif %}
+            </strong>
+            <div class="fd-map-foot">
+                {{ flight.departure_airport.icao_code }} → {{ flight.arrival_airport.icao_code }}
+                · <a href="https://www.openstreetmap.org/search?query={{ flight.arrival_airport.city|urlencode }}" target="_blank" rel="noopener">Ver en mapa</a>
+            </div>
+            {% if flight.route %}
+            <p style="margin:0.85rem 0 0;position:relative;z-index:1;font-size:0.76rem;line-height:1.45;opacity:0.92;">{{ flight.route|truncatechars:220 }}</p>
+            {% endif %}
+        </div>
         {% endif %}
-    </div>
-    {% endif %}
+
+        <div class="fd-side-card">
+            <h3 style="display:flex;align-items:center;justify-content:space-between;">
+                Documentos adjuntos
+                <span title="Gestionar cartas en administración" style="font-size:1rem;opacity:0.5;">+</span>
+            </h3>
+            {% if chart_attachment_count %}
+            <ul class="fd-doc-list">
+                {% for type_label, charts in departure_charts_by_type.items %}
+                    {% for c in charts %}
+                        {% if c.pdf_file %}
+                        <li>
+                            <a href="{{ c.pdf_file.url }}" download><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>{{ c.title|truncatechars:28 }} · {{ flight.departure_airport.icao_code }}</a>
+                            <a href="{{ c.pdf_file.url }}" download aria-label="Descargar"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg></a>
+                        </li>
+                        {% elif c.external_url %}
+                        <li>
+                            <a href="{{ c.external_url }}" target="_blank" rel="noopener"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6M15 3h6v6M10 14L21 3"/></svg>{{ c.title|truncatechars:24 }}</a>
+                            <a href="{{ c.external_url }}" target="_blank" rel="noopener" aria-label="Abrir"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6M15 3h6v6M10 14L21 3"/></svg></a>
+                        </li>
+                        {% endif %}
+                    {% endfor %}
+                {% endfor %}
+                {% for type_label, charts in arrival_charts_by_type.items %}
+                    {% for c in charts %}
+                        {% if c.pdf_file %}
+                        <li>
+                            <a href="{{ c.pdf_file.url }}" download><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>{{ c.title|truncatechars:28 }} · {{ flight.arrival_airport.icao_code }}</a>
+                            <a href="{{ c.pdf_file.url }}" download aria-label="Descargar"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg></a>
+                        </li>
+                        {% elif c.external_url %}
+                        <li>
+                            <a href="{{ c.external_url }}" target="_blank" rel="noopener"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6M15 3h6v6M10 14L21 3"/></svg>{{ c.title|truncatechars:24 }}</a>
+                            <a href="{{ c.external_url }}" target="_blank" rel="noopener" aria-label="Abrir"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6M15 3h6v6M10 14L21 3"/></svg></a>
+                        </li>
+                        {% endif %}
+                    {% endfor %}
+                {% endfor %}
+            </ul>
+            {% else %}
+            <p class="fd-doc-empty">No hay PDF ni enlaces asociados a esta ruta.</p>
+            {% endif %}
+        </div>
+    </aside>
 </div>
-
-<h2 style="margin-top:2rem;font-size:1.15rem;">Cartas aeronáuticas</h2>
-<p class="subtitle" style="margin:0 0 0.5rem;color:#555;">Por aeropuerto de la ruta, agrupadas por tipo (SID, STAR, aproximación, etc.).</p>
-
-<div class="charts-wrap">
-    {% include "logbook/_charts_airport_block.html" with airport=flight.departure_airport charts_by_type=departure_charts_by_type role_label="Salida" %}
-    {% include "logbook/_charts_airport_block.html" with airport=flight.arrival_airport charts_by_type=arrival_charts_by_type role_label="Llegada" %}
-</div>
-
-<p><a href="{% url 'logbook:flight_list' %}">Volver a la lista</a></p>
 
 {% if flight.status == "IN_PROGRESS" and flight.engine_start_time %}
 <script>
@@ -192,6 +855,156 @@
     }
     tick();
     setInterval(tick, 1000);
+})();
+</script>
+{% endif %}
+<script>
+(function () {
+    function canEmbedSameOrigin(url) {
+        if (!url) return false;
+        if (url.charAt(0) === "/") return true;
+        try {
+            var u = new URL(url, window.location.href);
+            return u.origin === window.location.origin;
+        } catch (e) {
+            return false;
+        }
+    }
+
+    function applyViewer(block, select) {
+        var iframe = block.querySelector(".chart-viewer-iframe");
+        var openA = block.querySelector(".chart-viewer-open");
+        var dlA = block.querySelector(".chart-viewer-download");
+        var tip = block.querySelector(".chart-viewer-tip");
+        var empty = block.querySelector(".chart-viewer-empty");
+        var descEl = block.querySelector(".chart-viewer-desc");
+        var extFb = block.querySelector(".chart-viewer-external-fallback");
+        if (!select || !iframe) return;
+
+        var opt = select.options[select.selectedIndex];
+        var pdf = opt.getAttribute("data-pdf");
+        var web = opt.getAttribute("data-web");
+        var openUrl = pdf || web || "";
+        var desc = opt.getAttribute("data-desc") || "";
+
+        if (descEl) {
+            descEl.textContent = desc;
+            descEl.hidden = !desc.trim();
+        }
+
+        if (empty) empty.hidden = !!openUrl;
+
+        if (openUrl) {
+            if (openA) {
+                openA.href = openUrl;
+                openA.style.display = "";
+            }
+            if (dlA) {
+                if (pdf) {
+                    dlA.href = pdf;
+                    dlA.style.display = "";
+                } else {
+                    dlA.style.display = "none";
+                }
+            }
+
+            var embedUrl = pdf || web;
+            var doEmbed = embedUrl && canEmbedSameOrigin(embedUrl);
+
+            if (doEmbed) {
+                iframe.removeAttribute("hidden");
+                iframe.src = embedUrl;
+                if (extFb) extFb.hidden = true;
+            } else {
+                iframe.removeAttribute("src");
+                iframe.setAttribute("hidden", "");
+                if (extFb) extFb.hidden = false;
+            }
+
+            if (tip) {
+                var showTip = !pdf && web && !canEmbedSameOrigin(web);
+                tip.style.display = showTip ? "block" : "none";
+            }
+        } else {
+            iframe.removeAttribute("src");
+            iframe.setAttribute("hidden", "");
+            if (extFb) extFb.hidden = true;
+            if (openA) openA.style.display = "none";
+            if (dlA) dlA.style.display = "none";
+            if (tip) tip.style.display = "none";
+            if (empty) empty.hidden = false;
+        }
+    }
+
+    function wireAirport(block) {
+        var tabs = block.querySelectorAll(".chart-kind-tab");
+        var panels = block.querySelectorAll(".chart-pick-panel");
+        if (!tabs.length || !panels.length) return;
+
+        function activateTab(index) {
+            tabs.forEach(function (t, j) {
+                var on = j === index;
+                t.classList.toggle("is-active", on);
+                t.setAttribute("aria-selected", on ? "true" : "false");
+                t.setAttribute("tabindex", on ? "0" : "-1");
+            });
+            panels.forEach(function (p, j) {
+                if (j === index) p.removeAttribute("hidden");
+                else p.setAttribute("hidden", "");
+            });
+            var sel = panels[index] ? panels[index].querySelector(".chart-viewer-select") : null;
+            if (sel) applyViewer(block, sel);
+        }
+
+        tabs.forEach(function (tab, i) {
+            tab.addEventListener("click", function () {
+                activateTab(i);
+            });
+        });
+
+        panels.forEach(function (panel) {
+            var sel = panel.querySelector(".chart-viewer-select");
+            if (sel) {
+                sel.addEventListener("change", function () {
+                    if (!panel.hasAttribute("hidden")) applyViewer(block, sel);
+                });
+            }
+        });
+
+        activateTab(0);
+    }
+
+    document.querySelectorAll(".js-chart-airport-viewer").forEach(wireAirport);
+})();
+</script>
+{% if route_map_json %}
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+<script>
+(function () {
+    var cfg = {{ route_map_json }};
+    var el = document.getElementById("fd-route-map");
+    if (!el || !cfg || !cfg.dep || !cfg.arr) return;
+    var map = L.map(el, { scrollWheelZoom: false });
+    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+        maxZoom: 18,
+        attribution: "&copy; OpenStreetMap"
+    }).addTo(map);
+
+    var dep = L.latLng(cfg.dep[0], cfg.dep[1]);
+    var arr = L.latLng(cfg.arr[0], cfg.arr[1]);
+    var bounds = L.latLngBounds([dep, arr]);
+
+    L.marker(dep).addTo(map).bindPopup(cfg.dep_icao || "DEP");
+    L.marker(arr).addTo(map).bindPopup(cfg.arr_icao || "ARR");
+    L.polyline([dep, arr], { color: "#2563eb", weight: 4, opacity: 0.9 }).addTo(map);
+
+    if (cfg.alt && cfg.alt.length === 2) {
+        var alt = L.latLng(cfg.alt[0], cfg.alt[1]);
+        bounds.extend(alt);
+        L.marker(alt).addTo(map).bindPopup("ALT · " + (cfg.alt_icao || ""));
+    }
+
+    map.fitBounds(bounds.pad(0.12));
 })();
 </script>
 {% endif %}

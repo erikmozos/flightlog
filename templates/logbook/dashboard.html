@@ -1,108 +1,457 @@
 {% extends "base.html" %}
 
-{% block title %}Panel de control — Flightlog{% endblock %}
+{% block title %}Panel de control · Flightlog{% endblock %}
+
+{% block extra_head %}
+<style>
+    .dash-head {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 1rem;
+        margin-bottom: 1.75rem;
+    }
+    .dash-head h1 {
+        margin: 0 0 0.35rem;
+        font-size: 1.65rem;
+        font-weight: 700;
+        color: var(--fl-navy);
+        letter-spacing: -0.02em;
+    }
+    .dash-head p {
+        margin: 0;
+        color: var(--fl-muted);
+        font-size: 0.95rem;
+    }
+    .dash-btn-primary {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.75rem 1.2rem;
+        background: var(--fl-navy);
+        color: #fff !important;
+        text-decoration: none;
+        border-radius: 12px;
+        font-weight: 600;
+        font-size: 0.9rem;
+        border: none;
+        cursor: pointer;
+        transition: background 0.15s;
+        box-shadow: var(--fl-shadow);
+    }
+    .dash-btn-primary:hover { background: var(--fl-navy-hover); color: #fff !important; }
+
+    .dash-stats {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 1rem;
+        margin-bottom: 1.75rem;
+    }
+    @media (max-width: 1100px) {
+        .dash-stats { grid-template-columns: repeat(2, 1fr); }
+    }
+    @media (max-width: 520px) {
+        .dash-stats { grid-template-columns: 1fr; }
+    }
+    .dash-stat {
+        background: var(--fl-surface);
+        border-radius: var(--fl-radius);
+        padding: 1.15rem 1.2rem;
+        box-shadow: var(--fl-shadow);
+        border: 1px solid var(--fl-border);
+        display: flex;
+        gap: 1rem;
+        align-items: flex-start;
+    }
+    .dash-stat-icon {
+        width: 44px;
+        height: 44px;
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+    }
+    .dash-stat-icon--amber { background: #fef3c7; color: #b45309; }
+    .dash-stat-icon--blue { background: #dbeafe; color: #1d4ed8; }
+    .dash-stat-icon--green { background: #dcfce7; color: #15803d; }
+    .dash-stat-icon--slate { background: #e2e8f0; color: #475569; }
+    .dash-stat-body .dash-stat-label {
+        display: block;
+        font-size: 0.8rem;
+        font-weight: 500;
+        color: var(--fl-muted);
+        margin-bottom: 0.25rem;
+    }
+    .dash-stat-body strong {
+        display: block;
+        font-size: 1.65rem;
+        font-weight: 700;
+        line-height: 1.1;
+        color: var(--fl-text);
+        letter-spacing: -0.02em;
+    }
+    .dash-stat-body .dash-stat-hint {
+        display: block;
+        font-size: 0.75rem;
+        color: var(--fl-muted);
+        margin-top: 0.35rem;
+        line-height: 1.35;
+    }
+    .dash-stat--accent {
+        background: var(--fl-navy);
+        border-color: var(--fl-navy);
+        color: #fff;
+    }
+    .dash-stat--accent .dash-stat-icon {
+        background: rgba(255,255,255,0.15);
+        color: #fff;
+    }
+    .dash-stat--accent .dash-stat-body .dash-stat-label { color: rgba(255,255,255,0.85); }
+    .dash-stat--accent .dash-stat-body strong { color: #fff; }
+    .dash-stat--accent .dash-stat-body .dash-stat-hint { color: rgba(255,255,255,0.8); }
+    .dash-stat--accent a { color: #fff !important; text-decoration: underline; font-size: 0.8rem; font-weight: 500; margin-top: 0.5rem; display: inline-block; }
+
+    .dash-grid {
+        display: grid;
+        grid-template-columns: 1fr 300px;
+        gap: 1.25rem;
+        align-items: start;
+    }
+    @media (max-width: 1000px) {
+        .dash-grid { grid-template-columns: 1fr; }
+    }
+    .dash-panel {
+        background: var(--fl-surface);
+        border-radius: var(--fl-radius);
+        box-shadow: var(--fl-shadow);
+        border: 1px solid var(--fl-border);
+        overflow: hidden;
+    }
+    .dash-panel-h {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 1rem;
+        padding: 1.15rem 1.25rem;
+        border-bottom: 1px solid var(--fl-border);
+    }
+    .dash-panel-h h2 {
+        margin: 0;
+        font-size: 1.05rem;
+        font-weight: 600;
+        color: var(--fl-text);
+    }
+    .dash-panel-h a {
+        font-size: 0.875rem;
+        font-weight: 500;
+        text-decoration: none;
+    }
+    .dash-table-wrap { overflow-x: auto; }
+    table.dash-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 0.875rem;
+    }
+    table.dash-table th {
+        text-align: left;
+        padding: 0.65rem 1.25rem;
+        font-size: 0.7rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        color: var(--fl-muted);
+        background: var(--fl-bg);
+        border-bottom: 1px solid var(--fl-border);
+    }
+    table.dash-table td {
+        padding: 0.85rem 1.25rem;
+        border-bottom: 1px solid var(--fl-border);
+        vertical-align: middle;
+    }
+    table.dash-table tbody tr:last-child td { border-bottom: none; }
+    table.dash-table tbody tr:hover td { background: rgba(243,244,246,0.5); }
+    table.dash-table td a { font-weight: 500; color: var(--fl-text); text-decoration: none; }
+    table.dash-table td a:hover { color: var(--fl-link); }
+
+    .dash-badge {
+        display: inline-block;
+        padding: 0.2rem 0.55rem;
+        border-radius: 999px;
+        font-size: 0.7rem;
+        font-weight: 600;
+    }
+    .dash-badge--planned { background: #fef3c7; color: #a16207; }
+    .dash-badge--progress { background: #dbeafe; color: #1e40af; }
+    .dash-badge--done { background: #dcfce7; color: #166534; }
+    .dash-badge--cancel { background: #fee2e2; color: #b91c1c; }
+    .dash-badge-simbrief {
+        display: inline-block;
+        margin-right: 0.35rem;
+        padding: 0.12rem 0.45rem;
+        border-radius: 6px;
+        font-size: 0.6rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+        background: #fef3c7;
+        color: #92400e;
+        vertical-align: middle;
+    }
+    .dash-flight-no { font-size: 0.75rem; font-weight: 600; color: var(--fl-muted); }
+
+    .dash-side-stack { display: flex; flex-direction: column; gap: 1.25rem; }
+    .dash-widget {
+        background: var(--fl-surface);
+        border-radius: var(--fl-radius);
+        box-shadow: var(--fl-shadow);
+        border: 1px solid var(--fl-border);
+        padding: 1.15rem 1.2rem;
+    }
+    .dash-widget h3 {
+        margin: 0 0 1rem;
+        font-size: 0.9rem;
+        font-weight: 600;
+        color: var(--fl-text);
+    }
+    .dash-bar-row { margin-bottom: 0.85rem; }
+    .dash-bar-row:last-child { margin-bottom: 0; }
+    .dash-bar-label {
+        display: flex;
+        justify-content: space-between;
+        font-size: 0.75rem;
+        color: var(--fl-muted);
+        margin-bottom: 0.35rem;
+    }
+    .dash-bar-label span:last-child { font-weight: 600; color: var(--fl-text); }
+    .dash-bar-track {
+        height: 8px;
+        border-radius: 999px;
+        background: var(--fl-bg);
+        overflow: hidden;
+    }
+    .dash-bar-fill { height: 100%; border-radius: 999px; transition: width 0.25s ease; }
+    .dash-bar-fill--planned { background: #eab308; }
+    .dash-bar-fill--progress { background: #3b82f6; }
+    .dash-bar-fill--completed { background: #22c55e; }
+    .dash-bar-fill--cancelled { background: #ef4444; }
+
+    .dash-alert {
+        background: #fef2f2;
+        border: 1px solid #fecaca;
+        border-radius: 12px;
+        padding: 0.9rem 1rem;
+        display: flex;
+        gap: 0.75rem;
+        align-items: flex-start;
+    }
+    .dash-alert svg { flex-shrink: 0; color: #dc2626; margin-top: 0.1rem; }
+    .dash-alert strong { display: block; font-size: 0.85rem; color: #991b1b; margin-bottom: 0.2rem; }
+    .dash-alert p { margin: 0; font-size: 0.8rem; color: #b91c1c; line-height: 1.4; }
+    .dash-alert--soft { background: #f0fdf4; border-color: #bbf7d0; }
+    .dash-alert--soft svg { color: #16a34a; }
+    .dash-alert--soft strong { color: #166534; }
+    .dash-alert--info { background: #eff6ff; border-color: #bfdbfe; }
+    .dash-alert--info svg { color: #2563eb; }
+    .dash-alert--info strong { color: #1e40af; }
+    .dash-alert--info p { color: #1d4ed8; }
+
+    .dash-promo {
+        border-radius: var(--fl-radius);
+        padding: 1.35rem 1.25rem;
+        background: linear-gradient(135deg, var(--fl-navy) 0%, #1a3254 50%, #243e5c 100%);
+        color: #fff;
+        position: relative;
+        overflow: hidden;
+    }
+    .dash-promo::after {
+        content: "";
+        position: absolute;
+        right: -20px;
+        top: -20px;
+        width: 100px;
+        height: 100px;
+        background: rgba(255,255,255,0.06);
+        border-radius: 50%;
+    }
+    .dash-promo h3 { margin: 0 0 0.4rem; font-size: 1rem; font-weight: 700; position: relative; z-index: 1; }
+    .dash-promo p { margin: 0; font-size: 0.85rem; opacity: 0.9; line-height: 1.45; position: relative; z-index: 1; }
+
+    .dash-empty {
+        padding: 2rem 1.25rem;
+        text-align: center;
+        color: var(--fl-muted);
+        font-size: 0.9rem;
+    }
+    .dash-empty a { font-weight: 600; }
+</style>
+{% endblock %}
 
 {% block content %}
-<style>
-    .dash-header { display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: 1rem; margin-bottom: 1.5rem; }
-    .dash-header h1 { margin: 0 0 0.25rem 0; font-size: 1.5rem; }
-    .dash-header p { margin: 0; color: #444; }
-    .btn-primary { display: inline-block; padding: 0.5rem 1rem; background: #0d47a1; color: #fff; text-decoration: none; border-radius: 6px; font-weight: 600; border: none; cursor: pointer; }
-    .btn-primary:hover { background: #1565c0; color: #fff; }
-    .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 1rem; margin-bottom: 2rem; }
-    .card { border: 1px solid #e0e0e0; border-radius: 8px; padding: 1rem; background: #fafafa; }
-    .card strong { display: block; font-size: 1.75rem; font-weight: 700; line-height: 1.2; }
-    .card .label { font-size: 0.85rem; color: #555; margin-bottom: 0.35rem; }
-    .card .hint { font-size: 0.75rem; color: #777; margin-top: 0.35rem; }
-    .card.card-active { background: #0d47a1; color: #fff; border-color: #0d47a1; }
-    .card.card-active .label, .card.card-active .hint { color: rgba(255,255,255,0.9); }
-    .card.card-active strong { color: #fff; }
-    .section-title { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 0.75rem; }
-    .section-title h2 { margin: 0; font-size: 1.15rem; }
-    table.dash-table { width: 100%; border-collapse: collapse; font-size: 0.95rem; }
-    table.dash-table th, table.dash-table td { text-align: left; padding: 0.5rem 0.6rem; border-bottom: 1px solid #eee; }
-    table.dash-table th { font-weight: 600; color: #333; }
-    .badge { display: inline-block; padding: 0.15rem 0.45rem; border-radius: 4px; font-size: 0.75rem; font-weight: 600; text-transform: uppercase; }
-    .badge-planned { background: #fff8e1; color: #f57f17; }
-    .badge-progress { background: #e3f2fd; color: #1565c0; }
-    .badge-done { background: #e8f5e9; color: #2e7d32; }
-    .badge-cancel { background: #ffebee; color: #c62828; }
-</style>
-
-<div class="dash-header">
+<div class="dash-head">
     <div>
         <h1>Panel de control</h1>
-        <p>Resumen de tu actividad en el libro de vuelo.</p>
+        <p>Hola, {% firstof user.get_short_name user.username %}. Resumen de tu actividad en el libro de vuelo.</p>
     </div>
-    <a class="btn-primary" href="{% url 'logbook:flight_create' %}">+ Nuevo vuelo</a>
+    <a class="dash-btn-primary" href="{% url 'logbook:flight_create' %}">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        Nuevo vuelo
+    </a>
 </div>
 
-<div class="cards">
-    <div class="card">
-        <span class="label">Vuelos previstos</span>
-        <strong>{{ planned_count }}</strong>
-        <span class="hint">Próximos 7 días</span>
+<div class="dash-stats">
+    <div class="dash-stat">
+        <div class="dash-stat-icon dash-stat-icon--amber" aria-hidden="true">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+        </div>
+        <div class="dash-stat-body">
+            <span class="dash-stat-label">Vuelos previstos</span>
+            <strong>{% if planned_count < 10 %}0{% endif %}{{ planned_count }}</strong>
+            <span class="dash-stat-hint">Próximos 7 días</span>
+        </div>
     </div>
-    <div class="card{% if in_progress %} card-active{% endif %}">
-        <span class="label">Vuelo en curso</span>
-        <strong>{% if in_progress %}1{% else %}0{% endif %}</strong>
-        {% if in_progress %}
-            <span class="hint">
+    <div class="dash-stat {% if in_progress %}dash-stat--accent{% endif %}">
+        <div class="dash-stat-icon dash-stat-icon--blue" aria-hidden="true">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17.8 19.2L16 11l3.5-3.5C21 6 21.5 4 21 3c-1-.5-3 0-4.5 1.5L13 8 4.8 6.2c-.5-.1-.9.1-1.1.5l-.3.5c-.2.5-.1 1 .3 1.3L9 12l-2 3H4l-1 1 3 2 2 3 1-1v-3l3-2 3.5 5.3c.3.4.8.5 1.3.3l.5-.2c.4-.3.6-.7.5-1.2z"/></svg>
+        </div>
+        <div class="dash-stat-body">
+            <span class="dash-stat-label">Vuelo en curso</span>
+            <strong>{% if in_progress %}1{% else %}0{% endif %}</strong>
+            {% if in_progress %}
+            <span class="dash-stat-hint">
                 {{ in_progress.departure_airport.icao_code }} → {{ in_progress.arrival_airport.icao_code }}
                 · {{ in_progress.aircraft.manufacturer }} {{ in_progress.aircraft.model }}
             </span>
-            <p style="margin:0.5rem 0 0 0;"><a href="{% url 'logbook:flight_detail' in_progress.pk %}" style="color:inherit;text-decoration:underline;">Ver vuelo</a></p>
+            <a href="{% url 'logbook:flight_detail' in_progress.pk %}">Ver vuelo</a>
+            {% else %}
+            <span class="dash-stat-hint">Ninguno en este momento</span>
+            {% endif %}
+        </div>
+    </div>
+    <div class="dash-stat">
+        <div class="dash-stat-icon dash-stat-icon--green" aria-hidden="true">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+        </div>
+        <div class="dash-stat-body">
+            <span class="dash-stat-label">Vuelos completados</span>
+            <strong>{{ completed_count }}</strong>
+            <span class="dash-stat-hint">Historial total</span>
+        </div>
+    </div>
+    <div class="dash-stat">
+        <div class="dash-stat-icon dash-stat-icon--slate" aria-hidden="true">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+        </div>
+        <div class="dash-stat-body">
+            <span class="dash-stat-label">Horas motor (total)</span>
+            <strong>{{ total_hours|floatformat:1 }}h</strong>
+            <span class="dash-stat-hint">Suma de vuelos completados</span>
+        </div>
+    </div>
+</div>
+
+<div class="dash-grid">
+    <div class="dash-panel">
+        <div class="dash-panel-h">
+            <h2>Últimos vuelos</h2>
+            <a href="{% url 'logbook:flight_list' %}">Ver todos</a>
+        </div>
+        {% if latest_flights %}
+        <div class="dash-table-wrap">
+            <table class="dash-table">
+                <thead>
+                    <tr>
+                        <th>Fecha</th>
+                        <th>Aeronave</th>
+                        <th>Ruta</th>
+                        <th>Estado</th>
+                        <th>Duración</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for f in latest_flights %}
+                    <tr>
+                        <td><a href="{% url 'logbook:flight_detail' f.pk %}">{{ f.planned_date|date:"d M Y" }}</a>
+                            {% if f.imported_source == "SIMBRIEF" %}<span class="dash-badge-simbrief" title="Importado desde OFP/SimBrief">SimBrief</span>{% endif %}
+                            {% if f.flight_number %}<span class="dash-flight-no">{{ f.flight_number }}</span>{% endif %}
+                        </td>
+                        <td>{{ f.aircraft.manufacturer }} {{ f.aircraft.model }}</td>
+                        <td>{{ f.departure_airport.icao_code }} → {{ f.arrival_airport.icao_code }}</td>
+                        <td>
+                            {% if f.status == "PLANNED" %}<span class="dash-badge dash-badge--planned">{{ f.get_status_display }}</span>
+                            {% elif f.status == "IN_PROGRESS" %}<span class="dash-badge dash-badge--progress">{{ f.get_status_display }}</span>
+                            {% elif f.status == "COMPLETED" %}<span class="dash-badge dash-badge--done">{{ f.get_status_display }}</span>
+                            {% else %}<span class="dash-badge dash-badge--cancel">{{ f.get_status_display }}</span>
+                            {% endif %}
+                        </td>
+                        <td>{% if f.total_time %}{{ f.total_time }}{% else %}—{% endif %}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
         {% else %}
-            <span class="hint">Ninguno en este momento</span>
+        <div class="dash-empty">
+            No hay vuelos registrados. <a href="{% url 'logbook:flight_create' %}">Crear vuelo previsto</a>.
+        </div>
         {% endif %}
     </div>
-    <div class="card">
-        <span class="label">Vuelos completados</span>
-        <strong>{{ completed_count }}</strong>
-        <span class="hint">Historial total</span>
-    </div>
-    <div class="card">
-        <span class="label">Horas acumuladas (motor)</span>
-        <strong>{{ total_hours|floatformat:1 }}h</strong>
-        <span class="hint">Suma de vuelos completados</span>
+
+    <div class="dash-side-stack">
+        <div class="dash-widget">
+            <h3>Vuelos por estado</h3>
+            {% if total_all %}
+            <div class="dash-bar-row">
+                <div class="dash-bar-label"><span>Planificados</span><span>{{ status_counts.planned }}</span></div>
+                <div class="dash-bar-track"><div class="dash-bar-fill dash-bar-fill--planned" style="width: {% widthratio status_counts.planned total_all 100 %}%;"></div></div>
+            </div>
+            <div class="dash-bar-row">
+                <div class="dash-bar-label"><span>En curso</span><span>{{ status_counts.in_progress }}</span></div>
+                <div class="dash-bar-track"><div class="dash-bar-fill dash-bar-fill--progress" style="width: {% widthratio status_counts.in_progress total_all 100 %}%;"></div></div>
+            </div>
+            <div class="dash-bar-row">
+                <div class="dash-bar-label"><span>Completados</span><span>{{ status_counts.completed }}</span></div>
+                <div class="dash-bar-track"><div class="dash-bar-fill dash-bar-fill--completed" style="width: {% widthratio status_counts.completed total_all 100 %}%;"></div></div>
+            </div>
+            {% if status_counts.cancelled %}
+            <div class="dash-bar-row">
+                <div class="dash-bar-label"><span>Cancelados</span><span>{{ status_counts.cancelled }}</span></div>
+                <div class="dash-bar-track"><div class="dash-bar-fill dash-bar-fill--cancelled" style="width: {% widthratio status_counts.cancelled total_all 100 %}%;"></div></div>
+            </div>
+            {% endif %}
+            {% else %}
+            <p style="margin:0;font-size:0.85rem;color:var(--fl-muted);">Aún no hay datos. Registra tu primer vuelo.</p>
+            {% endif %}
+        </div>
+
+        {% if next_planned %}
+        <div class="{% if next_planned_is_today %}dash-alert dash-alert--soft{% else %}dash-alert dash-alert--info{% endif %}">
+            {% if next_planned_is_today %}
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+            <div>
+                <strong>Próximo vuelo (hoy)</strong>
+                <p>{{ next_planned.departure_airport.icao_code }} → {{ next_planned.arrival_airport.icao_code }} · {{ next_planned.planned_date|date:"d M Y" }}. <a href="{% url 'logbook:flight_detail' next_planned.pk %}" style="color:inherit;font-weight:600;">Abrir</a></p>
+            </div>
+            {% else %}
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>
+            <div>
+                <strong>Próximo vuelo planificado</strong>
+                <p>{{ next_planned.departure_airport.icao_code }} → {{ next_planned.arrival_airport.icao_code }}, {{ next_planned.planned_date|date:"d M Y" }}. <a href="{% url 'logbook:flight_detail' next_planned.pk %}" style="color:inherit;font-weight:600;">Ver ficha</a></p>
+            </div>
+            {% endif %}
+        </div>
+        {% else %}
+        <div class="dash-widget">
+            <h3>Próximo vuelo</h3>
+            <p style="margin:0;font-size:0.85rem;color:var(--fl-muted);">No tienes vuelos planificados con fecha futura.</p>
+        </div>
+        {% endif %}
+
+        <div class="dash-promo">
+            <h3>Tu bitácora, en orden</h3>
+            <p>Registra salidas, tiempos de motor y consulta el historial con el mismo estilo visual en todas las pantallas.</p>
+        </div>
     </div>
 </div>
-
-<div class="section-title">
-    <h2>Últimos vuelos</h2>
-    <a href="{% url 'logbook:flight_list' %}">Ver todos</a>
-</div>
-
-{% if latest_flights %}
-<table class="dash-table">
-    <thead>
-        <tr>
-            <th>Fecha</th>
-            <th>Aeronave</th>
-            <th>Ruta</th>
-            <th>Estado</th>
-            <th>Duración</th>
-        </tr>
-    </thead>
-    <tbody>
-        {% for f in latest_flights %}
-        <tr>
-            <td><a href="{% url 'logbook:flight_detail' f.pk %}">{{ f.planned_date|date:"d M Y" }}</a></td>
-            <td>{{ f.aircraft.manufacturer }} {{ f.aircraft.model }}</td>
-            <td>{{ f.departure_airport.icao_code }} → {{ f.arrival_airport.icao_code }}</td>
-            <td>
-                {% if f.status == "PLANNED" %}<span class="badge badge-planned">{{ f.get_status_display }}</span>
-                {% elif f.status == "IN_PROGRESS" %}<span class="badge badge-progress">{{ f.get_status_display }}</span>
-                {% elif f.status == "COMPLETED" %}<span class="badge badge-done">{{ f.get_status_display }}</span>
-                {% else %}<span class="badge badge-cancel">{{ f.get_status_display }}</span>
-                {% endif %}
-            </td>
-            <td>{% if f.total_time %}{{ f.total_time }}{% else %}—{% endif %}</td>
-        </tr>
-        {% endfor %}
-    </tbody>
-</table>
-{% else %}
-<p>No hay vuelos registrados. <a href="{% url 'logbook:flight_create' %}">Crear vuelo previsto</a>.</p>
-{% endif %}
 {% endblock %}

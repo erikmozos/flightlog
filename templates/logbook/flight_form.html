@@ -1,30 +1,429 @@
 {% extends "base.html" %}
 
-{% block title %}Planificar vuelo — Flightlog{% endblock %}
+{% block title %}Planificar vuelo · Flightlog{% endblock %}
+
+{% block extra_head %}
+<style>
+    .ff-bc {
+        font-size: 0.8125rem;
+        color: var(--fl-muted);
+        margin-bottom: 0.35rem;
+    }
+    .ff-bc a { color: var(--fl-muted); text-decoration: none; font-weight: 500; }
+    .ff-bc a:hover { color: var(--fl-navy); }
+    .ff-bc .ff-bc-sep { margin: 0 0.35rem; color: var(--fl-border); }
+
+    .ff-layout {
+        display: grid;
+        grid-template-columns: 1fr 300px;
+        gap: 1.25rem;
+        align-items: start;
+    }
+    @media (max-width: 1000px) {
+        .ff-layout { grid-template-columns: 1fr; }
+    }
+
+    .ff-panel {
+        background: var(--fl-surface);
+        border-radius: var(--fl-radius);
+        box-shadow: var(--fl-shadow);
+        border: 1px solid var(--fl-border);
+        padding: 1.5rem 1.5rem 1.25rem;
+    }
+    .ff-head {
+        display: flex;
+        align-items: flex-start;
+        gap: 1rem;
+        margin-bottom: 1.5rem;
+        padding-bottom: 1.25rem;
+        border-bottom: 1px solid var(--fl-border);
+    }
+    .ff-head-icon {
+        width: 48px;
+        height: 48px;
+        border-radius: 12px;
+        background: var(--fl-navy-soft);
+        color: var(--fl-navy);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+    }
+    .ff-head-text h1 {
+        margin: 0 0 0.35rem;
+        font-size: 1.5rem;
+        font-weight: 700;
+        color: var(--fl-navy);
+        letter-spacing: -0.02em;
+    }
+    .ff-head-text p {
+        margin: 0;
+        font-size: 0.9rem;
+        color: var(--fl-muted);
+        line-height: 1.45;
+        max-width: 42rem;
+    }
+
+    .ff-nonfield {
+        background: #fef2f2;
+        border: 1px solid #fecaca;
+        border-radius: 12px;
+        padding: 0.85rem 1rem;
+        margin-bottom: 1.25rem;
+        font-size: 0.875rem;
+        color: #b91c1c;
+    }
+    .ff-nonfield ul { margin: 0; padding-left: 1.2rem; }
+
+    .ff-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 1.1rem 1.25rem;
+    }
+    @media (max-width: 640px) {
+        .ff-grid { grid-template-columns: 1fr; }
+    }
+    .ff-field--full { grid-column: 1 / -1; }
+
+    .ff-field label,
+    .ff-field .ff-label {
+        display: block;
+        font-size: 0.7rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        color: var(--fl-muted);
+        margin-bottom: 0.4rem;
+    }
+    .ff-shell {
+        display: flex;
+        align-items: center;
+        gap: 0.65rem;
+        background: var(--fl-bg);
+        border: 1px solid var(--fl-border);
+        border-radius: 12px;
+        padding: 0 0.85rem;
+        transition: border-color 0.15s, box-shadow 0.15s;
+    }
+    .ff-shell:focus-within {
+        border-color: #94a3b8;
+        box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+    }
+    .ff-shell-icon {
+        flex-shrink: 0;
+        color: var(--fl-muted);
+        display: flex;
+        align-items: center;
+    }
+    .ff-control {
+        flex: 1;
+        min-width: 0;
+        border: none;
+        background: transparent;
+        padding: 0.72rem 0;
+        font: inherit;
+        font-size: 0.9rem;
+        color: var(--fl-text);
+    }
+    .ff-control:focus { outline: none; }
+    select.ff-control {
+        cursor: pointer;
+        appearance: none;
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%236b7280' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+        background-repeat: no-repeat;
+        background-position: right 0 center;
+        padding-right: 1.5rem;
+    }
+    textarea.ff-control.ff-textarea {
+        flex: 1;
+        min-width: 0;
+        display: block;
+        width: 100%;
+        padding: 0.85rem 0;
+        min-height: 110px;
+        resize: vertical;
+    }
+    .ff-field--full .ff-shell { align-items: flex-start; padding-top: 0.35rem; padding-bottom: 0.35rem; }
+    .ff-field--full .ff-shell-icon { margin-top: 0.35rem; }
+
+    .ff-errorlist {
+        margin: 0.35rem 0 0;
+        padding-left: 1rem;
+        font-size: 0.8125rem;
+        color: #b91c1c;
+    }
+
+    .ff-actions {
+        display: flex;
+        justify-content: flex-end;
+        gap: 0.75rem;
+        flex-wrap: wrap;
+        margin-top: 1.5rem;
+        padding-top: 1.25rem;
+        border-top: 1px solid var(--fl-border);
+    }
+    .ff-btn-secondary {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        padding: 0.72rem 1.15rem;
+        border-radius: 12px;
+        border: 1px solid var(--fl-border);
+        background: var(--fl-surface);
+        color: var(--fl-text) !important;
+        font: inherit;
+        font-weight: 600;
+        font-size: 0.9rem;
+        text-decoration: none;
+        cursor: pointer;
+    }
+    .ff-btn-secondary:hover { background: var(--fl-bg); }
+    .ff-btn-primary {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.45rem;
+        padding: 0.72rem 1.2rem;
+        border-radius: 12px;
+        border: none;
+        background: var(--fl-navy);
+        color: #fff !important;
+        font: inherit;
+        font-weight: 600;
+        font-size: 0.9rem;
+        cursor: pointer;
+        box-shadow: var(--fl-shadow);
+    }
+    .ff-btn-primary:hover { background: var(--fl-navy-hover); }
+
+    .ff-aside { display: flex; flex-direction: column; gap: 1rem; }
+    .ff-card {
+        border-radius: var(--fl-radius);
+        border: 1px solid var(--fl-border);
+        overflow: hidden;
+        box-shadow: var(--fl-shadow);
+    }
+    .ff-card--map {
+        background: linear-gradient(145deg, #1e293b 0%, #0f172a 50%, #1e3a5f 100%);
+        color: #fff;
+        padding: 1.25rem;
+        min-height: 140px;
+        position: relative;
+    }
+    .ff-card--map::before {
+        content: "";
+        position: absolute;
+        inset: 0;
+        opacity: 0.15;
+        background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='80' height='80' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='0.4'%3E%3Cpath d='M2 12h4l3 8 4-16 3 8h6'/%3E%3C/svg%3E");
+        background-size: 120px;
+    }
+    .ff-card--map h3, .ff-card--map p { position: relative; z-index: 1; }
+    .ff-card--map h3 {
+        margin: 0 0 0.4rem;
+        font-size: 0.95rem;
+        font-weight: 700;
+        display: flex;
+        align-items: center;
+        gap: 0.45rem;
+    }
+    .ff-card--map p { margin: 0; font-size: 0.8rem; opacity: 0.88; line-height: 1.45; }
+
+    .ff-card--check {
+        background: var(--fl-navy);
+        color: #fff;
+        padding: 1.15rem 1.2rem;
+    }
+    .ff-card--check h3 {
+        margin: 0 0 0.85rem;
+        font-size: 0.9rem;
+        font-weight: 700;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+    .ff-checklist { margin: 0; padding: 0; list-style: none; font-size: 0.8125rem; }
+    .ff-checklist li {
+        display: flex;
+        align-items: flex-start;
+        gap: 0.5rem;
+        margin-bottom: 0.55rem;
+        opacity: 0.95;
+    }
+    .ff-checklist li:last-child { margin-bottom: 0; }
+    .ff-checklist svg { flex-shrink: 0; margin-top: 0.1rem; color: #86efac; }
+
+    .ff-card--tip {
+        background: #eff6ff;
+        border-color: #bfdbfe;
+        padding: 1.1rem 1.15rem;
+    }
+    .ff-card--tip h3 {
+        margin: 0 0 0.45rem;
+        font-size: 0.88rem;
+        font-weight: 700;
+        color: #1e40af;
+        display: flex;
+        align-items: center;
+        gap: 0.45rem;
+    }
+    .ff-card--tip p {
+        margin: 0;
+        font-size: 0.8125rem;
+        color: #1d4ed8;
+        line-height: 1.45;
+    }
+</style>
+{% endblock %}
 
 {% block content %}
-<h1>Planificar nuevo vuelo</h1>
-<p>No se piden tiempos reales de motor. El vuelo se guarda como <strong>Planificado</strong>; el encendido/apagado se registra con <strong>Iniciar</strong> y <strong>Finalizar</strong> desde el vuelo.</p>
-<form method="post" action="">
-    {% csrf_token %}
-    {% if form.non_field_errors %}
-        <ul>
-            {% for err in form.non_field_errors %}<li>{{ err }}</li>{% endfor %}
-        </ul>
-    {% endif %}
-    <table>
-        {% for field in form %}
-            <tr>
-                <th>{{ field.label_tag }}</th>
-                <td>
-                    {{ field.errors }}
-                    {{ field }}
-                    {% if field.help_text %}<small><br>{{ field.help_text }}</small>{% endif %}
-                </td>
-            </tr>
-        {% endfor %}
-    </table>
-    <p><button type="submit">Guardar vuelo previsto</button></p>
-</form>
-<p><a href="{% url 'logbook:flight_list' %}">Volver a la lista</a></p>
+<nav class="ff-bc" aria-label="Migas de pan">
+    <a href="{% url 'logbook:flight_list' %}">Bitácora</a>
+    <span class="ff-bc-sep">›</span>
+    <span aria-current="page">Nuevo vuelo</span>
+</nav>
+
+<div class="ff-layout">
+    <div class="ff-panel">
+        <div class="ff-head">
+            <div class="ff-head-icon" aria-hidden="true">
+                <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17.8 19.2L16 11l3.5-3.5C21 6 21.5 4 21 3c-1-.5-3 0-4.5 1.5L13 8 4.8 6.2c-.5-.1-.9.1-1.1.5l-.3.5c-.2.5-.1 1 .3 1.3L9 12l-2 3H4l-1 1 3 2 2 3 1-1v-3l3-2 3.5 5.3c.3.4.8.5 1.3.3l.5-.2c.4-.3.6-.7.5-1.2z"/></svg>
+            </div>
+            <div class="ff-head-text">
+                <h1>Planificar nuevo vuelo</h1>
+                <p>Complete los detalles para registrar su próxima operación. El vuelo se guarda como <strong>planificado</strong>; los tiempos de motor se registran con <strong>Iniciar</strong> y <strong>Finalizar</strong> desde la ficha del vuelo.</p>
+            </div>
+        </div>
+
+        <form method="post" action="{% url 'logbook:flight_create' %}" novalidate>
+            {% csrf_token %}
+            {% if form.non_field_errors %}
+            <div class="ff-nonfield">{{ form.non_field_errors }}</div>
+            {% endif %}
+
+            <div class="ff-grid">
+                <div class="ff-field">
+                    <label for="{{ form.planned_date.id_for_label }}">{{ form.planned_date.label }}</label>
+                    <div class="ff-shell">
+                        <span class="ff-shell-icon" aria-hidden="true">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                        </span>
+                        {{ form.planned_date }}
+                    </div>
+                    {% if form.planned_date.errors %}<ul class="ff-errorlist">{% for e in form.planned_date.errors %}<li>{{ e }}</li>{% endfor %}</ul>{% endif %}
+                </div>
+
+                <div class="ff-field">
+                    <label for="{{ form.aircraft.id_for_label }}">{{ form.aircraft.label }}</label>
+                    <div class="ff-shell">
+                        <span class="ff-shell-icon" aria-hidden="true">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17.8 19.2L16 11l3.5-3.5C21 6 21.5 4 21 3c-1-.5-3 0-4.5 1.5L13 8 4.8 6.2c-.5-.1-.9.1-1.1.5l-.3.5c-.2.5-.1 1 .3 1.3L9 12l-2 3H4l-1 1 3 2 2 3 1-1v-3l3-2 3.5 5.3c.3.4.8.5 1.3.3l.5-.2c.4-.3.6-.7.5-1.2z"/></svg>
+                        </span>
+                        {{ form.aircraft }}
+                    </div>
+                    {% if form.aircraft.errors %}<ul class="ff-errorlist">{% for e in form.aircraft.errors %}<li>{{ e }}</li>{% endfor %}</ul>{% endif %}
+                </div>
+
+                <div class="ff-field">
+                    <label for="{{ form.departure_airport.id_for_label }}">{{ form.departure_airport.label }}</label>
+                    <div class="ff-shell">
+                        <span class="ff-shell-icon" aria-hidden="true">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+                        </span>
+                        {{ form.departure_airport }}
+                    </div>
+                    {% if form.departure_airport.errors %}<ul class="ff-errorlist">{% for e in form.departure_airport.errors %}<li>{{ e }}</li>{% endfor %}</ul>{% endif %}
+                </div>
+
+                <div class="ff-field">
+                    <label for="{{ form.arrival_airport.id_for_label }}">{{ form.arrival_airport.label }}</label>
+                    <div class="ff-shell">
+                        <span class="ff-shell-icon" aria-hidden="true">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M16 12l-4 4-4-4M12 8v7"/></svg>
+                        </span>
+                        {{ form.arrival_airport }}
+                    </div>
+                    {% if form.arrival_airport.errors %}<ul class="ff-errorlist">{% for e in form.arrival_airport.errors %}<li>{{ e }}</li>{% endfor %}</ul>{% endif %}
+                </div>
+
+                <div class="ff-field">
+                    <label for="{{ form.planned_departure_time.id_for_label }}">{{ form.planned_departure_time.label }}</label>
+                    <div class="ff-shell">
+                        <span class="ff-shell-icon" aria-hidden="true">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                        </span>
+                        {{ form.planned_departure_time }}
+                    </div>
+                    {% if form.planned_departure_time.errors %}<ul class="ff-errorlist">{% for e in form.planned_departure_time.errors %}<li>{{ e }}</li>{% endfor %}</ul>{% endif %}
+                </div>
+
+                <div class="ff-field">
+                    <label for="{{ form.fuel_on_board_start_kg.id_for_label }}">{{ form.fuel_on_board_start_kg.label }}</label>
+                    <div class="ff-shell">
+                        <span class="ff-shell-icon" aria-hidden="true">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2v8h-2V4H8l-2 6v10h12V8l-4-6h-2zm-2 16H8v-2h4v2z"/></svg>
+                        </span>
+                        {{ form.fuel_on_board_start_kg }}
+                    </div>
+                    {% if form.fuel_on_board_start_kg.errors %}<ul class="ff-errorlist">{% for e in form.fuel_on_board_start_kg.errors %}<li>{{ e }}</li>{% endfor %}</ul>{% endif %}
+                </div>
+            </div>
+
+            <div class="ff-field ff-field--full" style="margin-top: 1.1rem;">
+                <label for="{{ form.remarks.id_for_label }}">{{ form.remarks.label }}</label>
+                <div class="ff-shell">
+                    <span class="ff-shell-icon" aria-hidden="true">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+                    </span>
+                    {{ form.remarks }}
+                </div>
+                {% if form.remarks.errors %}<ul class="ff-errorlist">{% for e in form.remarks.errors %}<li>{{ e }}</li>{% endfor %}</ul>{% endif %}
+            </div>
+
+            <div class="ff-actions">
+                <a class="ff-btn-secondary" href="{% url 'logbook:flight_list' %}">Cancelar</a>
+                <button type="submit" class="ff-btn-primary">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+                    Guardar vuelo previsto
+                </button>
+            </div>
+        </form>
+    </div>
+
+    <aside class="ff-aside" aria-label="Ayuda">
+        <div class="ff-card ff-card--map">
+            <h3>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>
+                Ruta sugerida
+            </h3>
+            <p>Visualización orientativa. Elija aeropuertos de salida y llegada en el formulario para planificar la operación.</p>
+        </div>
+        <div class="ff-card ff-card--check">
+            <h3>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>
+                Pre-flight check
+            </h3>
+            <ul class="ff-checklist">
+                <li>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+                    Revisar NOTAMs locales
+                </li>
+                <li>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+                    Validar METAR/TAF
+                </li>
+                <li>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+                    Documentación de aeronave
+                </li>
+            </ul>
+        </div>
+        <div class="ff-card ff-card--tip">
+            <h3>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/><circle cx="12" cy="12" r="4"/></svg>
+                Tip profesional
+            </h3>
+            <p>Introduzca la <strong>hora prevista en UTC</strong> para mantener la coherencia del libro de vuelo con operaciones y regulación.</p>
+        </div>
+    </aside>
+</div>
 {% endblock %}

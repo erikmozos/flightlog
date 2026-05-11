@@ -73,6 +73,57 @@ class FlightLog(models.Model):
         default=Status.PLANNED,
     )
     remarks = models.TextField(blank=True)
+    flight_number = models.CharField(max_length=20, blank=True)
+    route = models.TextField(blank=True)
+    alternate_airport = models.ForeignKey(
+        Airport,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="alternate_flights",
+    )
+    estimated_flight_time = models.DurationField(
+        null=True,
+        blank=True,
+        help_text="Duración prevista desde el OFP (ej. EET/ETE), si se importó.",
+    )
+    imported_source = models.CharField(max_length=30, blank=True)
+    imported_at = models.DateTimeField(null=True, blank=True)
+    ofp_fuel_ramp_kg = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        help_text="Combustible en rampa según OFP importado (kg).",
+    )
+    ofp_fuel_takeoff_kg = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        help_text="Combustible al despegue previsto según OFP (kg).",
+    )
+    ofp_fuel_landing_kg = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        help_text="Combustible previsto en llegada según OFP (kg).",
+    )
+    fuel_on_board_start_kg = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        help_text="Combustible a bordo al encender motores (kg).",
+    )
+    fuel_on_board_end_kg = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        help_text="Combustible a bordo al apagar motores (kg).",
+    )
 
     class Meta:
         ordering = ["-planned_date", "-id"]

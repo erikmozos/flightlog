@@ -64,6 +64,9 @@ db.sqlite3-journal
 /media
 /staticfiles
 
+# Cartas: PDF en carpetas de importación masiva (no versionar binarios)
+charts/imports/**/*.pdf
+
 # Flask (por si compartes herramientas entre proyectos)
 instance/
 .webassets-cache

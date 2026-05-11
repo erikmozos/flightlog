@@ -10,6 +10,7 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/6.0/ref/settings/
 """
 
+import os
 from pathlib import Path
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -19,13 +20,27 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/6.0/howto/deployment/checklist/
 
+DEBUG = os.environ.get("DJANGO_DEBUG", "1") not in ("", "0", "false", "False")
+
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-llc)&+8tseiqhuz294^z@ckjboqouyc+$)s#z885=2aq%7yw72'
+_secret = (os.environ.get("DJANGO_SECRET_KEY") or "").strip()
+SECRET_KEY = (
+    _secret
+    if _secret
+    else 'django-insecure-llc)&+8tseiqhuz294^z@ckjboqouyc+$)s#z885=2aq%7yw72'
+)
 
-# SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+_allowed = os.environ.get("DJANGO_ALLOWED_HOSTS")
+ALLOWED_HOSTS = [h.strip() for h in _allowed.split(",") if h.strip()] if _allowed else []
 
-ALLOWED_HOSTS = []
+CSRF_TRUSTED_ORIGINS = [
+    x.strip()
+    for x in os.environ.get("DJANGO_CSRF_TRUSTED_ORIGINS", "").split(",")
+    if x.strip()
+]
+
+# En contenedores o despliegues simples: servir /media desde Django (no usar en origen público de alto tráfico).
+SERVE_MEDIA = os.environ.get("DJANGO_SERVE_MEDIA", "0") in ("1", "true", "True")
 
 
 # Application definition
@@ -47,6 +62,7 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
+    'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.locale.LocaleMiddleware',
     'django.middleware.common.CommonMiddleware',
@@ -79,10 +95,13 @@ WSGI_APPLICATION = 'flightlog.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/6.0/ref/settings/#databases
 
+_sqlite_path = os.environ.get("DJANGO_SQLITE_PATH")
+_db_name = Path(_sqlite_path) if _sqlite_path else (BASE_DIR / "db.sqlite3")
+
 DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+    "default": {
+        "ENGINE": "django.db.backends.sqlite3",
+        "NAME": _db_name,
     }
 }
 
@@ -126,10 +145,29 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/6.0/howto/static-files/
 
 STATIC_URL = "static/"
+STATIC_ROOT = BASE_DIR / "staticfiles"
+
+STORAGES = {
+    "default": {
+        "BACKEND": "django.core.files.storage.FileSystemStorage",
+    },
+    "staticfiles": {
+        "BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage",
+    },
+}
+if not DEBUG:
+    STORAGES["staticfiles"] = {
+        "BACKEND": "whitenoise.storage.CompressedStaticFilesStorage",
+    }
 
 # Archivos subidos (PDF de cartas, etc.) — solo desarrollo; en producción el servidor web sirve MEDIA_ROOT
-MEDIA_URL = "media/"
+# Prefijo con "/" para que las URLs sean de sitio (`/media/...`) y se resuelvan bien desde cualquier ruta.
+MEDIA_URL = "/media/"
 MEDIA_ROOT = BASE_DIR / "media"
+
+# Permitir incrustar en iframe recursos del mismo origen (p. ej. PDF bajo /media/ en el visor de cartas).
+# El valor por defecto de Django es DENY y el visor del navegador no muestra el PDF en el iframe.
+X_FRAME_OPTIONS = "SAMEORIGIN"
 
 LOGIN_URL = "users:login"
 LOGIN_REDIRECT_URL = "logbook:dashboard"
