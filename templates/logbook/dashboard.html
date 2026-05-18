@@ -122,6 +122,35 @@
     @media (max-width: 1000px) {
         .dash-grid { grid-template-columns: 1fr; }
     }
+    .dash-main-stack {
+        display: flex;
+        flex-direction: column;
+        gap: 1.25rem;
+        min-width: 0;
+    }
+    .dash-panel--windy .dash-windy-note {
+        margin: 0;
+        padding: 0 1.25rem 0.85rem;
+        font-size: 0.75rem;
+        color: var(--fl-muted);
+        line-height: 1.45;
+    }
+    .dash-panel--windy .dash-windy-wrap {
+        margin: 0 1.25rem 1.25rem;
+        border-radius: 12px;
+        overflow: hidden;
+        border: 1px solid var(--fl-border);
+        height: min(420px, 52vh);
+        min-height: 280px;
+        background: #0f172a;
+    }
+    .dash-panel--windy .dash-windy-iframe {
+        width: 100%;
+        height: 100%;
+        border: 0;
+        display: block;
+        vertical-align: top;
+    }
     .dash-panel {
         background: var(--fl-surface);
         border-radius: var(--fl-radius);
@@ -285,6 +314,10 @@
         font-size: 0.9rem;
     }
     .dash-empty a { font-weight: 600; }
+
+    @media print {
+        .dash-panel--windy { display: none !important; }
+    }
 </style>
 {% endblock %}
 
@@ -352,48 +385,70 @@
 </div>
 
 <div class="dash-grid">
-    <div class="dash-panel">
-        <div class="dash-panel-h">
-            <h2>Últimos vuelos</h2>
-            <a href="{% url 'logbook:flight_list' %}">Ver todos</a>
+    <div class="dash-main-stack">
+        <div class="dash-panel">
+            <div class="dash-panel-h">
+                <h2>Últimos vuelos</h2>
+                <a href="{% url 'logbook:flight_list' %}">Ver todos</a>
+            </div>
+            {% if latest_flights %}
+            <div class="dash-table-wrap">
+                <table class="dash-table">
+                    <thead>
+                        <tr>
+                            <th>Fecha</th>
+                            <th>Aeronave</th>
+                            <th>Ruta</th>
+                            <th>Estado</th>
+                            <th>Duración</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for f in latest_flights %}
+                        <tr>
+                            <td><a href="{% url 'logbook:flight_detail' f.pk %}">{{ f.planned_date|date:"d M Y" }}</a>
+                                {% if f.imported_source == "SIMBRIEF" %}<span class="dash-badge-simbrief" title="Importado desde OFP/SimBrief">SimBrief</span>{% endif %}
+                                {% if f.flight_number %}<span class="dash-flight-no">{{ f.flight_number }}</span>{% endif %}
+                            </td>
+                            <td>{{ f.aircraft.manufacturer }} {{ f.aircraft.model }}</td>
+                            <td>{{ f.departure_airport.icao_code }} → {{ f.arrival_airport.icao_code }}</td>
+                            <td>
+                                {% if f.status == "PLANNED" %}<span class="dash-badge dash-badge--planned">{{ f.get_status_display }}</span>
+                                {% elif f.status == "IN_PROGRESS" %}<span class="dash-badge dash-badge--progress">{{ f.get_status_display }}</span>
+                                {% elif f.status == "COMPLETED" %}<span class="dash-badge dash-badge--done">{{ f.get_status_display }}</span>
+                                {% else %}<span class="dash-badge dash-badge--cancel">{{ f.get_status_display }}</span>
+                                {% endif %}
+                            </td>
+                            <td>{% if f.total_time %}{{ f.total_time }}{% else %}—{% endif %}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="dash-empty">
+                No hay vuelos registrados. <a href="{% url 'logbook:flight_create' %}">Crear vuelo previsto</a>.
+            </div>
+            {% endif %}
         </div>
-        {% if latest_flights %}
-        <div class="dash-table-wrap">
-            <table class="dash-table">
-                <thead>
-                    <tr>
-                        <th>Fecha</th>
-                        <th>Aeronave</th>
-                        <th>Ruta</th>
-                        <th>Estado</th>
-                        <th>Duración</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for f in latest_flights %}
-                    <tr>
-                        <td><a href="{% url 'logbook:flight_detail' f.pk %}">{{ f.planned_date|date:"d M Y" }}</a>
-                            {% if f.imported_source == "SIMBRIEF" %}<span class="dash-badge-simbrief" title="Importado desde OFP/SimBrief">SimBrief</span>{% endif %}
-                            {% if f.flight_number %}<span class="dash-flight-no">{{ f.flight_number }}</span>{% endif %}
-                        </td>
-                        <td>{{ f.aircraft.manufacturer }} {{ f.aircraft.model }}</td>
-                        <td>{{ f.departure_airport.icao_code }} → {{ f.arrival_airport.icao_code }}</td>
-                        <td>
-                            {% if f.status == "PLANNED" %}<span class="dash-badge dash-badge--planned">{{ f.get_status_display }}</span>
-                            {% elif f.status == "IN_PROGRESS" %}<span class="dash-badge dash-badge--progress">{{ f.get_status_display }}</span>
-                            {% elif f.status == "COMPLETED" %}<span class="dash-badge dash-badge--done">{{ f.get_status_display }}</span>
-                            {% else %}<span class="dash-badge dash-badge--cancel">{{ f.get_status_display }}</span>
-                            {% endif %}
-                        </td>
-                        <td>{% if f.total_time %}{{ f.total_time }}{% else %}—{% endif %}</td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        </div>
-        {% else %}
-        <div class="dash-empty">
-            No hay vuelos registrados. <a href="{% url 'logbook:flight_create' %}">Crear vuelo previsto</a>.
+
+        {% if windy_dashboard_enabled %}
+        <div class="dash-panel dash-panel--windy">
+            <div class="dash-panel-h">
+                <h2>Meteorología (Windy)</h2>
+                <a href="https://api4.windy.com/map-forecast/docs" target="_blank" rel="noopener">Documentación</a>
+            </div>
+            <p class="dash-windy-note">
+                Vista según tus vuelos recientes y el próximo planificado — mapa incrustado (misma clave «Map Forecast» que en la ficha de vuelo).
+            </p>
+            <div class="dash-windy-wrap">
+                <iframe
+                    class="dash-windy-iframe"
+                    title="Meteorología Windy — resumen de rutas"
+                    loading="lazy"
+                    src="{% url 'logbook:windy_dashboard_embed' %}"
+                ></iframe>
+            </div>
         </div>
         {% endif %}
     </div>

@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="robots" content="noindex, nofollow">
+    <title>Windy</title>
+    <style>
+        html, body {
+            margin: 0;
+            height: 100%;
+            overflow: hidden;
+            background: #0f172a;
+        }
+        #windy {
+            width: 100%;
+            height: 100%;
+        }
+        .vfr-label {
+            background: transparent;
+            border: none;
+            box-shadow: none;
+            color: #bfdbfe;
+            font-size: 9px;
+            font-weight: 600;
+            letter-spacing: 0.05em;
+            text-shadow: 0 0 3px #0f172a, 0 0 3px #0f172a;
+            padding: 0;
+            white-space: nowrap;
+        }
+    </style>
+    {# Windy Map Forecast API: https://api4.windy.com/map-forecast/tutorials/hello-world #}
+    <script src="https://unpkg.com/leaflet@1.4.0/dist/leaflet.js"></script>
+    <script src="https://api.windy.com/assets/map-forecast/libBoot.js"></script>
+</head>
+<body>
+    <div id="windy"></div>
+    <script>
+        const AIRPORTS = {{ airports_geojson|safe }};
+        const NAVAIDS  = {{ navaids_geojson|safe }};
+
+        const NAVAID_COLORS = {
+            "VOR":     "#f59e0b",
+            "VOR-DME": "#f59e0b",
+            "VORTAC":  "#fb923c",
+            "NDB":     "#a78bfa",
+            "DME":     "#94a3b8",
+            "TACAN":   "#fb923c",
+        };
+
+        windyInit({{ windy_options|safe }}, function (windyAPI) {
+            const { map } = windyAPI;
+
+            // --- Aeródromos de la BD ---
+            AIRPORTS.forEach(ap => {
+                L.circleMarker([ap.lat, ap.lon], {
+                    radius: 6,
+                    color: "#f59e0b",
+                    fillColor: "#fcd34d",
+                    fillOpacity: 0.85,
+                    weight: 2,
+                }).addTo(map).bindPopup(
+                    `<b>${ap.icao}</b><br><span style="font-size:11px">${ap.name}</span>`
+                );
+            });
+
+            // --- Navaids (VOR / NDB / DME …) ---
+            NAVAIDS.forEach(n => {
+                const color = NAVAID_COLORS[n.type] || "#94a3b8";
+                L.circleMarker([n.lat, n.lon], {
+                    radius: 4,
+                    color: color,
+                    fillColor: color,
+                    fillOpacity: 0.75,
+                    weight: 1,
+                }).addTo(map).bindTooltip(
+                    `${n.ident} (${n.type})`,
+                    { permanent: false, className: "vfr-label", direction: "right" }
+                );
+            });
+        });
+    </script>
+</body>
+</html>

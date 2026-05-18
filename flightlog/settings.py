@@ -13,6 +13,8 @@ https://docs.djangoproject.com/en/6.0/ref/settings/
 import os
 from pathlib import Path
 
+import dj_database_url
+
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -95,15 +97,24 @@ WSGI_APPLICATION = 'flightlog.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/6.0/ref/settings/#databases
 
-_sqlite_path = os.environ.get("DJANGO_SQLITE_PATH")
-_db_name = Path(_sqlite_path) if _sqlite_path else (BASE_DIR / "db.sqlite3")
-
-DATABASES = {
-    "default": {
-        "ENGINE": "django.db.backends.sqlite3",
-        "NAME": _db_name,
+_database_url = (os.environ.get("DATABASE_URL") or "").strip()
+if _database_url:
+    # Vercel, Neon, etc.: sin almacenamiento persistente local para SQLite.
+    DATABASES = {
+        "default": dj_database_url.config(
+            conn_max_age=0,
+            ssl_require=_database_url.startswith("postgres"),
+        )
     }
-}
+else:
+    _sqlite_path = os.environ.get("DJANGO_SQLITE_PATH")
+    _db_name = Path(_sqlite_path) if _sqlite_path else (BASE_DIR / "db.sqlite3")
+    DATABASES = {
+        "default": {
+            "ENGINE": "django.db.backends.sqlite3",
+            "NAME": _db_name,
+        }
+    }
 
 
 # Password validation
@@ -168,6 +179,9 @@ MEDIA_ROOT = BASE_DIR / "media"
 # Permitir incrustar en iframe recursos del mismo origen (p. ej. PDF bajo /media/ en el visor de cartas).
 # El valor por defecto de Django es DENY y el visor del navegador no muestra el PDF en el iframe.
 X_FRAME_OPTIONS = "SAMEORIGIN"
+
+# Clave Windy Map Forecast API (https://api4.windy.com/api-key/). Sin clave no se muestra el widget meteorológico.
+WINDY_API_KEY = (os.environ.get("WINDY_API_KEY") or "").strip()
 
 LOGIN_URL = "users:login"
 LOGIN_REDIRECT_URL = "logbook:dashboard"

@@ -510,6 +510,27 @@
         z-index: 0;
     }
 
+    .fd-windy-note {
+        margin: 0 0 0.65rem;
+        font-size: 0.72rem;
+        color: var(--fl-muted);
+        line-height: 1.45;
+    }
+    .fd-windy-wrap {
+        border-radius: 12px;
+        overflow: hidden;
+        border: 1px solid var(--fl-border);
+        height: 280px;
+        background: #0f172a;
+    }
+    .fd-windy-iframe {
+        width: 100%;
+        height: 100%;
+        border: 0;
+        display: block;
+        vertical-align: top;
+    }
+
     @media print {
         .fd-aside, .fd-head-actions, .fd-btn-start, .fd-btn-finish, .fd-back { display: none !important; }
         .fd-layout { grid-template-columns: 1fr; }
@@ -789,6 +810,25 @@
             {% if flight.route %}
             <p style="margin:0.85rem 0 0;position:relative;z-index:1;font-size:0.76rem;line-height:1.45;opacity:0.92;">{{ flight.route|truncatechars:220 }}</p>
             {% endif %}
+        </div>
+        {% endif %}
+
+        {% if windy_enabled %}
+        <div class="fd-side-card">
+            <h3>Meteorología (Windy)</h3>
+            <p class="fd-windy-note">
+                Vista interactiva según aeródromos del vuelo (centro entre salida y llegada si hay ambas coordenadas).
+                Condiciones de uso y capas disponibles según Windy —
+                <a href="https://api4.windy.com/map-forecast/docs" target="_blank" rel="noopener">documentación oficial</a>.
+            </p>
+            <div class="fd-windy-wrap">
+                <iframe
+                    class="fd-windy-iframe"
+                    title="Mapa meteorológico Windy para este vuelo"
+                    loading="lazy"
+                    src="{% url 'logbook:windy_flight_embed' flight.pk %}"
+                ></iframe>
+            </div>
         </div>
         {% endif %}
 

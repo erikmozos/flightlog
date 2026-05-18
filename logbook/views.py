@@ -1,18 +1,21 @@
 import json
+import math
 from collections import OrderedDict
 from datetime import timedelta
 from decimal import Decimal, InvalidOperation
 
+from django.conf import settings
 from django.contrib.auth.decorators import login_required
 from django.core.paginator import EmptyPage, PageNotAnInteger, Paginator
 from django.db.models import Q, Sum
+from django.http import HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 from django.utils.safestring import mark_safe
 from django.views.decorators.http import require_GET, require_POST
 
 from aircraft.models import Aircraft
-from airports.models import Airport
+from airports.models import Airport, Navaid
 from charts.models import Chart
 from .forms import FlightLogForm, SimBriefImportForm
 from .models import FlightLog
@@ -236,6 +239,10 @@ def dashboard(request):
         bool(next_planned) and next_planned.planned_date == today
     )
 
+    windy_dashboard_enabled = bool(
+        getattr(settings, "WINDY_API_KEY", "").strip()
+    ) and bool(_gather_dashboard_windy_coords(request.user))
+
     return render(
         request,
         "logbook/dashboard.html",
@@ -249,6 +256,7 @@ def dashboard(request):
             "status_counts": status_counts,
             "next_planned": next_planned,
             "next_planned_is_today": next_planned_is_today,
+            "windy_dashboard_enabled": windy_dashboard_enabled,
         },
     )
 
@@ -371,6 +379,138 @@ def _airport_lat_lon(airport):
     return [float(airport.latitude), float(airport.longitude)]
 
 
+def _airports_geojson(airports_qs) -> str:
+    result = []
+    for ap in airports_qs:
+        ll = _airport_lat_lon(ap)
+        if ll:
+            result.append({"icao": ap.icao_code, "name": ap.name, "lat": ll[0], "lon": ll[1]})
+    return json.dumps(result)
+
+
+def _navaids_geojson_in_bbox(lat: float, lon: float, zoom: int) -> str:
+    span = max(2.0, 360.0 / (2 ** zoom) * 1.5)
+    qs = Navaid.objects.filter(
+        latitude__gte=lat - span,
+        latitude__lte=lat + span,
+        longitude__gte=lon - span,
+        longitude__lte=lon + span,
+    ).exclude(navaid_type="FIX")[:120]
+    return json.dumps([
+        {"ident": n.ident, "name": n.name, "type": n.navaid_type, "lat": n.latitude, "lon": n.longitude}
+        for n in qs
+    ])
+
+
+def _windy_build_context(lat: float, lon: float, zoom: int, key: str) -> dict:
+    windy_options = mark_safe(
+        json.dumps({"key": key, "verbose": False, "lat": lat, "lon": lon, "zoom": int(zoom)})
+    )
+    airports_qs = Airport.objects.filter(latitude__isnull=False, longitude__isnull=False)
+    return {
+        "windy_options": windy_options,
+        "airports_geojson": mark_safe(_airports_geojson(airports_qs)),
+        "navaids_geojson": mark_safe(_navaids_geojson_in_bbox(lat, lon, int(zoom))),
+    }
+
+
+def _windy_zoom_from_span(span: float) -> int:
+    if span >= 40:
+        return 4
+    if span >= 18:
+        return 5
+    if span >= 8:
+        return 6
+    if span >= 4:
+        return 7
+    if span >= 2:
+        return 8
+    if span >= 1:
+        return 9
+    if span >= 0.35:
+        return 10
+    return 11
+
+
+def _windy_route_center_zoom(dep_ll, arr_ll):
+    """Centro [lat, lon] y nivel de zoom aproximado para Windy."""
+    if dep_ll and arr_ll:
+        lat = (dep_ll[0] + arr_ll[0]) / 2.0
+        lon = (dep_ll[1] + arr_ll[1]) / 2.0
+        dlat = abs(dep_ll[0] - arr_ll[0])
+        lon_scale = math.cos(math.radians(lat))
+        dlon_eff = abs(dep_ll[1] - arr_ll[1]) * max(0.25, lon_scale)
+        span = max(dlat, dlon_eff)
+        return lat, lon, _windy_zoom_from_span(span)
+    if dep_ll:
+        return dep_ll[0], dep_ll[1], 9
+    if arr_ll:
+        return arr_ll[0], arr_ll[1], 9
+    return None
+
+
+def _windy_center_zoom_from_coords(coords: list[list[float]]):
+    """Centro según dispersión de varios puntos [lat, lon]."""
+    if not coords:
+        return None
+    if len(coords) == 1:
+        return coords[0][0], coords[0][1], 9
+    lats = [c[0] for c in coords]
+    lons = [c[1] for c in coords]
+    lat = sum(lats) / len(lats)
+    lon = sum(lons) / len(lons)
+    dlat = max(lats) - min(lats)
+    lon_scale = math.cos(math.radians(lat))
+    dlon_eff = (max(lons) - min(lons)) * max(0.25, lon_scale)
+    span = max(dlat, dlon_eff)
+    return lat, lon, _windy_zoom_from_span(span)
+
+
+def _gather_dashboard_windy_coords(user):
+    """Aeropuertos con coords de en curso, próximo previsto y vuelos recientes (deduplicados)."""
+    seen: set[tuple[float, float]] = set()
+    out: list[list[float]] = []
+
+    def append_ll(ll):
+        if not ll:
+            return
+        k = (round(ll[0], 5), round(ll[1], 5))
+        if k in seen:
+            return
+        seen.add(k)
+        out.append(ll)
+
+    qs = FlightLog.objects.filter(pilot=user).select_related(
+        "departure_airport",
+        "arrival_airport",
+    )
+
+    for f in (
+        qs.filter(status=FlightLog.Status.IN_PROGRESS).order_by("-id")[:1]
+    ):
+        append_ll(_airport_lat_lon(f.departure_airport))
+        append_ll(_airport_lat_lon(f.arrival_airport))
+
+    today = timezone.localdate()
+    for f in (
+        qs.filter(
+            status=FlightLog.Status.PLANNED,
+            planned_date__gte=today,
+        )
+        .order_by("planned_date", "id")[:1]
+    ):
+        append_ll(_airport_lat_lon(f.departure_airport))
+        append_ll(_airport_lat_lon(f.arrival_airport))
+
+    for f in qs.order_by("-planned_date", "-id")[:12]:
+        append_ll(_airport_lat_lon(f.departure_airport))
+        append_ll(_airport_lat_lon(f.arrival_airport))
+        if len(out) >= 16:
+            break
+
+    return out
+
+
 @login_required
 @require_GET
 def flight_detail(request, pk):
@@ -431,6 +571,11 @@ def flight_detail(request, pk):
             )
         )
 
+    windy_enabled = (
+        bool(getattr(settings, "WINDY_API_KEY", "").strip())
+        and (dep_ll is not None or arr_ll is not None)
+    )
+
     return render(
         request,
         "logbook/flight_detail.html",
@@ -442,8 +587,65 @@ def flight_detail(request, pk):
             "last_completed": last_completed,
             "chart_attachment_count": _chart_attachment_count(dep_qs, arr_qs),
             "route_map_json": route_map_json,
+            "windy_enabled": windy_enabled,
         },
     )
+
+
+@login_required
+@require_GET
+def windy_flight_embed(request, pk):
+    """Página minimal para iframe: Windy Map Forecast centrado en la ruta del vuelo."""
+    key = getattr(settings, "WINDY_API_KEY", "").strip()
+    if not key:
+        return HttpResponse(
+            "Windy API: configure WINDY_API_KEY.",
+            status=503,
+            content_type="text/plain; charset=utf-8",
+        )
+    flight = get_object_or_404(
+        FlightLog.objects.select_related(
+            "departure_airport",
+            "arrival_airport",
+        ),
+        pk=pk,
+        pilot=request.user,
+    )
+    center = _windy_route_center_zoom(
+        _airport_lat_lon(flight.departure_airport),
+        _airport_lat_lon(flight.arrival_airport),
+    )
+    if center is None:
+        return HttpResponse(
+            "Este vuelo no tiene coordenadas de aeródromo para Windy.",
+            status=404,
+            content_type="text/plain; charset=utf-8",
+        )
+    lat, lon, zoom = center
+    return render(request, "logbook/windy_flight_embed.html", _windy_build_context(lat, lon, zoom, key))
+
+
+@login_required
+@require_GET
+def windy_dashboard_embed(request):
+    """Iframe del panel de control: Windy centrado en vuelos en curso / próximos / recientes."""
+    key = getattr(settings, "WINDY_API_KEY", "").strip()
+    if not key:
+        return HttpResponse(
+            "Windy API: configure WINDY_API_KEY.",
+            status=503,
+            content_type="text/plain; charset=utf-8",
+        )
+    coords = _gather_dashboard_windy_coords(request.user)
+    center = _windy_center_zoom_from_coords(coords)
+    if center is None:
+        return HttpResponse(
+            "No hay aeródromos con coordenadas para mostrar en Windy.",
+            status=404,
+            content_type="text/plain; charset=utf-8",
+        )
+    lat, lon, zoom = center
+    return render(request, "logbook/windy_flight_embed.html", _windy_build_context(lat, lon, zoom, key))
 
 
 @login_required
