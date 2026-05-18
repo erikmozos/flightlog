@@ -39,7 +39,6 @@ Django carga en `INSTALLED_APPS` las aplicaciones listadas a continuación. El p
 | **`airports`** | Modelo y admin de **aeropuertos** (ICAO, nombre, ciudad, país). Misma idea: catálogo consumido por el logbook y el admin. |
 | **`logbook`** | **Núcleo de la lógica de negocio visible en web:** `FlightLog`, formulario, vistas (`flight_list`, `flight_create`, `flight_detail`) y `urls` bajo el prefijo incluido en el proyecto. |
 | **`charts`** | **Reservada** para cartas aeronáuticas: a día de hoy no hay modelos en `charts/models.py` ni URLs de usuario; el admin de charts está vacío. |
-| **`core`** | App vacía a nivel de modelos; sirve de placeholder o extensión futura (sin lógica en el código inspeccionado). |
 | **`users`** | App vacía a nivel de modelos; no sustituye el modelo de usuario y no añade flujo de registro/login en URLs. |
 
 Las plantillas compartidas viven en **`templates/`** a la raíz (no dentro de `logbook/`), p. ej. `base.html` y `logbook/*.html`.
@@ -172,7 +171,7 @@ El **sitio de administración** (`/admin/`) concentra el mantenimiento de catál
 - **API:** no hay endpoints JSON/REST.  
 - **Ciclo de tres pasos (planificar / iniciar / finalizar) y estados** (`PLANNED`, etc.): **no** implementados en el modelo ni en las URLs.  
 - **Integración con proveedores de cartas:** inexistente; en el diseño, las cartas serían añadidas **manualmente** (archivo o URL) en una futura implementación.  
-- **App `users` y `core`:** sin modelos de negocio; no amplían aún el comportamiento de la app web pública.  
+- **App `users`:** sin modelos de negocio propios; usa `django.contrib.auth.User` y solo añade login/registro/logout.  
 - **Cálculo de duración** basado en `block_off` / `block_on` con lógica de medianoche, no en campos `engine_start_time` / `engine_stop_time` (no presentes en el repositorio).
 
 ---
